@@ -6,7 +6,7 @@
 /* Style the question text */
 .question {
   font-weight: bold;
-font-style: italic;
+
   cursor: pointer;
  font-size: 20px;
 font-family: 'Futura Medium', sans-serif;
@@ -27,7 +27,7 @@ header {
 }
 
 .main-header {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: bold;
 font-family: 'Futura Medium', sans-serif;
 color: rgb(9, 43, 144);
@@ -36,3 +36,4 @@ color: rgb(9, 43, 144);
 .sub-header {
   font-size: 18px;
   color: rgb(255,0 , 0); /* Adjust the color as needed */
+
