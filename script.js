@@ -115,20 +115,20 @@ document.addEventListener('DOMContentLoaded', function () {
       </tr>
       <tr>
         <td><b>Managers/Directors Only</b></td>
-        <td>USD 752.00</td>
-        <td>USD 725.00</td>
+        <td style="text-align: center;">USD 752.00</td>
+        <td style="text-align: center;">USD 725.00</td>
      
       </tr>
       <tr>
         <td><b>Managers/Directors & One</b></td>
-        <td>USD 1,350.00</td>
-        <td>USD 1,301.00</td>
+        <td style="text-align: center;">USD 1,350.00</td>
+        <td style="text-align: center;">USD 1,301.00</td>
   
       </tr>
       <tr>
         <td><b>Managers/Directors & Family</b></td>
-        <td>USD 2,231.00</td>
-        <td>USD 2,149.00</td>
+        <td style="text-align: center;">USD 2,231.00</td>
+        <td style="text-align: center;">USD 2,149.00</td>
  
       </tr>
     </table>
@@ -147,20 +147,20 @@ document.addEventListener('DOMContentLoaded', function () {
       </tr>
       <tr>
         <td><b>Managers/Directors Only</b></td>
-        <td>USD 1,238.04</td>
-        <td>USD 1,192.00</td>
+        <td style="text-align: center;">USD 1,238.04</td>
+        <td style="text-align: center;">USD 1,192.00</td>
    
       </tr>
       <tr>
         <td><b>Managers/Directors & One</b></td>
-        <td>USD 2,415.84</td>
-        <td>USD 2,326.00</td>
+        <td style="text-align: center;">USD 2,415.84</td>
+        <td style="text-align: center;">USD 2,326.00</td>
        
       </tr>
       <tr>
         <td><b>Managers/Directors & Family</b></td>
-        <td>USD 3,654.64</td>
-        <td>USD 3,519.00</td>
+        <td style="text-align: center;">USD 3,654.64</td>
+        <td style="text-align: center;">USD 3,519.00</td>
       </tr>
     </table>
   `);
