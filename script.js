@@ -1,28 +1,40 @@
 document.addEventListener('DOMContentLoaded', function () {
-  function addFAQ(question, answer) {
+  function addFAQ(question, completeAnswer) {
     var faqContainer = document.getElementById('faq-container');
     var faqItem = document.createElement('div');
     faqItem.className = 'faq-item';
     faqItem.innerHTML = `
-      <div class="question">${question}</div>
-      <div class="answer">${answer}</div>
+      <div class="question"><span class="arrow">&#8594;</span> ${question}</div>
+      <div class="answer">${completeAnswer}</div>
     `;
     faqContainer.appendChild(faqItem);
 
     var questionElement = faqItem.querySelector('.question');
     var answerElement = faqItem.querySelector('.answer');
+    var arrowElement = faqItem.querySelector('.arrow');
 
-    // Show answer on hover
+    // Add transition effect to the arrow
+    arrowElement.style.transition = 'transform 0.3s ease-in-out';
+
+    // Show answer on hover and change arrow direction with transition
     questionElement.addEventListener('mouseover', function () {
       answerElement.style.display = 'block';
+      arrowElement.style.transform = 'rotate(90deg)';
     });
 
-    // Hide answer when not hovering
+    // Hide answer and reset arrow direction with transition when not hovering
     faqItem.addEventListener('mouseleave', function () {
       answerElement.style.display = 'none';
+      arrowElement.style.transform = 'rotate(0deg)';
     });
-  }
 
+    // Change the display to inline-block for the arrow
+    arrowElement.style.display = 'inline-block';
+
+    // Add red color and make the arrow bold
+    arrowElement.style.color = 'red';
+    arrowElement.style.fontWeight = 'bold';
+  }
   // Add your FAQs here
   addFAQ("Who is Cardea Benefits Limited?", "Cardea Benefits Limited (Cardea) is a Third-Party Administrator for Health Benefit Plans and an Agostini Insurance Brokers Limited (AIB) subsidiary.");
   addFAQ("What services does Cardea provide?", "Cardea adjudicates medical claims and provides health benefit payment and disbursement to providers or health plan members. Cardea also offers plan members access to the overseas Providers Network.");
@@ -41,7 +53,46 @@ document.addEventListener('DOMContentLoaded', function () {
   addFAQ("Does the Plan have a deductible?", "Yes. The plan's deductible for Active and Retired Managers/Directors is USD 20,000 per calendar year or USD 40,000 per family per calendar year. Cardea will pay benefits under this plan after the deductible has been satisfied.");
   addFAQ("Will the deductible be settled under the local Group Health Plan?", "Yes. Claims are settled under the Local Group Health Plan first.");
   addFAQ("What do I do if I have an emergency overseas?", "Please go directly to an emergency facility. If the emergency results in hospitalization, contact Cardea's Emergency call centre COLLINSON CRISIS 24 (See your Digital ID Card for details). COLLINSON CRISIS 24 will commit the liability at the time of service. The patient will be responsible for their share of the cost. If the emergency does not result in hospitalization, the patient is responsible for 100% of the cost at the time of service and can then submit a claim for reimbursement in the usual manner.");
-  addFAQ("Were there any benefit adjustments when the plan was switched to Cardea?", "The following benefit enhancements were made when the plan was switched to Cardea:<br><br>Benefits	Expiring Limit	Enhanced Limit<br>Congenital Conditions (Lifetime Maximum):	<br>For conditions manifested on or after 18th birthday	USD 1,000,000 Lifetime	USD 2,000,000 Lifetime<br>Organ Transplant (Lifetime Maximum):	<br>Waiting period of 12 months for new enrollees	USD 1,000,000 Lifetime 	USD 2,000,000 Lifetime<br>Continuation of Coverage:	<br>Dependent Spouses and Children of Deceased employees	Not Available	Coverage continued for up to 2 years (subject to payment of premiums)<br>Extension of Coverage:	<br>Incapacitated Children solely dependent on the employee	Not Available	Coverage extended so long as the employee remains covered.");
+  addFAQ('Were there any benefit adjustments when the plan was switched to Cardea?', `
+    <p>The following benefit enhancements were made when the plan was switched to Cardea:</p>
+    <table class="styled-table">
+      <tr>
+        <th>Benefits</th>
+        <th>Expiring Limit</th>
+        <th>Enhanced Limit</th>
+      </tr>
+      <tr>
+        <td>Congenital Conditions (Lifetime Maximum)</td>
+         </tr>
+      <tr>
+     <td>For conditions manifested on or after 18th birthday</td>
+        <td>USD 1,000,000 Lifetime</td>
+        <td>USD 2,000,000 Lifetime</td>
+
+      </tr>
+      <tr>
+	<td>Waiting period of 12 months for new enrollees</td>
+        <td>USD 1,000,000 Lifetime</td>
+        <td>USD 2,000,000 Lifetime</td>
+<tr>
+        <td>Continuation of Coverage</td>
+</tr>
+<tr>
+        <td>Dependent Spouses and Children of Deceased employees</td>
+        <td>Not Available</td>
+        <td>Coverage continued for up to 2 years (subject to payment of premiums)</td>
+        
+      </tr>
+      <tr>
+        <td>Extension of Coverage</td>
+</tr>
+<tr>
+        <td>Incapacitated Children solely dependent on the employee</td>
+        <td>Not Available</td>
+        <td>Coverage extended so long as the employee remains covered.</td>
+      </tr>
+    </table>
+  `);
   addFAQ("Were there any adjustments in my annual premium?", "Yes, premiums were reduced when the switch to Cardea was made.<br><br>Manager/Active Director Premiums Payable Quarterly<br><br>Category	Annual Premium<br>	Current Premium	2024 Cardea Premium<br>Managers/Directors Only	USD 752.00	USD 725.00<br>Managers/Directors & One	USD 1,350.00	USD 1,301.00<br>Managers/Directors & Family	USD 2,231.00	USD 2,149.00<br><br>Retirees Premiums Payable Quarterly<br><br>Category	Annual Premium<br>	Current Premium	2024 Cardea Premium<br>Managers/Directors Only	USD 1,238.04	USD 1,192.00<br>Managers/Directors & One	USD 2,415.84	USD 2,326.00<br>Managers/Directors & Family	USD 3,654.64	USD 3,519.00");
   addFAQ("Can I add my spouse and children to the plan?", "Yes, legally married spouses and common law spouses can be added to the plan. In addition to unmarried children (including stepchildren and legally adopted children) up to age 21. Coverage is extended for unmarried children to age 25 if attending tertiary education and proof of attendance is needed yearly.");
   addFAQ("How long can I and my spouse remain on the plan?", "Active staff and their spouse coverage continue up to retirement age. After retirement, retired staff and spouses can continue in the plan provided the premiums payment continues.");
@@ -49,4 +100,8 @@ document.addEventListener('DOMContentLoaded', function () {
   addFAQ("Can dependent children and spouse remain on the plan after the death of an employee or retired employee?", "Yes. Coverage will continue up to two years following the death of the primary member (Employee/Retired employee). The surviving dependents/spouse must continue to pay premiums.");
   addFAQ("Will coverage under this plan continue if I or my dependents are living outside of Trinidad and Tobago for more than 6 months?", "No. Coverage will terminate if the insured member or dependents of the insured member live outside of Trinidad and Tobago for more than six months.");
   addFAQ("Where can I file a complaint if I’m having problems with my insurance?", "If you’re unsatisfied with your Health Plan’s services or your claim has been denied, call the member services phone number on your member card. You may be able to resolve your concern over the phone, or you can file a complaint with the Bank’s Compensation and Benefits section.");
+
+
+  
+
 });
