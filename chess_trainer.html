@@ -45,6 +45,8 @@ main{display:flex;flex:1;overflow:hidden;}
 .square.hint-sq{background:#06b6d455!important;}
 .square.candidate::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:33%;height:33%;background:rgba(0,0,0,.22);border-radius:50%;pointer-events:none;z-index:2;}
 .square.candidate.has-piece::after{width:92%;height:92%;background:transparent;border-radius:50%;border:4px solid rgba(0,0,0,.25);}
+.square .wp{color:#fff;text-shadow:-1px -1px 0 #333,1px -1px 0 #333,-1px 1px 0 #333,1px 1px 0 #333,0 2px 4px rgba(0,0,0,.5);}
+.square .bp{color:#111;text-shadow:0 1px 3px rgba(255,255,255,.4);}
 .board-files{display:flex;color:var(--muted);font-size:10px;font-weight:600;}
 .board-files span{width:68px;text-align:center;}
 .board-ranks{display:flex;flex-direction:column;margin-right:3px;color:var(--muted);font-size:10px;font-weight:600;}
@@ -536,7 +538,7 @@ function buildBoard(parsed,flipped,targetEl,ranksEl,filesEl){
       sq.className='square '+(light?'light':'dark');
       sq.dataset.rank=ri;sq.dataset.file=fi;
       const piece=parsed.board[7-ri][fi];
-      if(piece)sq.textContent=PIECES[piece]||'';
+      if(piece){const sp=document.createElement('span');sp.className=piece===piece.toUpperCase()?'wp':'bp';sp.textContent=PIECES[piece]||'';sq.appendChild(sp);}
       if(selectedSq&&selectedSq.rank==ri&&selectedSq.file==fi)sq.classList.add('selected');
       if(hintSq&&hintSq.rank==ri&&hintSq.file==fi)sq.classList.add('hint-sq');
       if(lastMoveFrom&&lastMoveFrom.rank==ri&&lastMoveFrom.file==fi)sq.classList.add('last-from');
@@ -801,7 +803,7 @@ function buildVBoard(mode){
       sq.className='v-sq '+(realLight?'lv':'dv');
       sq.dataset.sq=sqName;
       if(sqName===vTarget){
-        if(mode==='knight'){sq.textContent='♞';sq.style.fontSize='26px';}
+        if(mode==='knight'){const sp=document.createElement('span');sp.className='bp';sp.textContent='♞';sq.appendChild(sp);sq.style.fontSize='26px';}
         else if(mode==='diag'){sq.classList.add('target-ring');}
       }
       if(mode==='coords')sq.addEventListener('click',()=>answerVBoard(sqName));
