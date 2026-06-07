@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess Mastery Trainer</title>
+  <style>
+    :root {
+      --bg: #0f0f1a;
+      --panel: #1a1a2e;
+      --border: #2a2a4a;
+      --accent: #7c3aed;
+      --accent2: #06b6d4;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --light-sq: #f0d9b5;
+      --dark-sq: #b58863;
+      --sq-sel: #7c3aed99;
+      --sq-hint: #06b6d455;
+      --sq-last: #f59e0b44;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+    .logo span { color: var(--accent2); }
+    nav { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+    nav button {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all .2s;
+    }
+    nav button.active, nav button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    main {
+      display: flex;
+      flex: 1;
+      gap: 0;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 280px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    /* ── SCREENS ── */
+    .screen { display: none; width: 100%; }
+    .screen.active { display: flex; flex-direction: column; align-items: center; }
+
+    /* ── HOME SCREEN ── */
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 900px;
+      margin-top: 20px;
+    }
+    .mode-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+    }
+    .mode-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .mode-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .mode-card h3 { font-size: 1.1rem; margin-bottom: 6px; }
+    .mode-card p { color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+    .mode-card .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      display: flex;
+      gap: 24px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 900px;
+      flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat .val { font-size: 1.6rem; font-weight: 700; color: var(--accent2); }
+    .stat .lbl { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── CHESS BOARD ── */
+    .board-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #board-container {
+      position: relative;
+      user-select: none;
+    }
+    .chess-board {
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .board-row { display: flex; }
+    .square {
+      width: 68px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      cursor: pointer;
+      position: relative;
+      transition: background .1s;
+    }
+    .square.light { background: var(--light-sq); }
+    .square.dark  { background: var(--dark-sq); }
+    .square.selected { background: var(--sq-sel) !important; }
+    .square.hint    { background: var(--sq-hint) !important; }
+    .square.last    { background: var(--sq-last) !important; }
+    .square.check   { background: #ef444488 !important; }
+    .coord-file, .coord-rank {
+      position: absolute;
+      font-size: 10px;
+      font-weight: 600;
+      opacity: .6;
+      pointer-events: none;
+    }
+    .coord-file { bottom: 2px; right: 4px; }
+    .coord-rank { top: 2px; left: 4px; }
+
+    /* ── BOARD LABELS ── */
+    .board-files, .board-ranks {
+      display: flex;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .board-files { gap: 0; }
+    .board-files span { width: 68px; text-align: center; }
+    .board-ranks { flex-direction: column; margin-right: 4px; }
+    .board-ranks span { height: 68px; display: flex; align-items: center; }
+
+    /* ── PUZZLE INFO ── */
+    .puzzle-info {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 580px;
+    }
+    .puzzle-info h3 { font-size: 1rem; color: var(--accent2); margin-bottom: 8px; }
+    .puzzle-theme {
+      display: inline-block;
+      background: var(--border);
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 4px 4px 4px 0;
+    }
+    .feedback-box {
+      margin-top: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: none;
+    }
+    .feedback-box.correct { background: #10b98122; border: 1px solid var(--green); color: var(--green); display: block; }
+    .feedback-box.wrong   { background: #ef444422; border: 1px solid var(--red);   color: var(--red);   display: block; }
+    .feedback-box.info    { background: #7c3aed22; border: 1px solid var(--accent); color: var(--accent); display: block; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: opacity .2s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn.secondary:hover { border-color: var(--accent); color: var(--text); }
+    .btn.gold { background: var(--gold); }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+    /* ── PROGRESS BAR ── */
+    .prog-bar {
+      background: var(--border);
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 8px 0;
+    }
+    .prog-bar-fill { height: 100%; background: var(--accent); transition: width .4s; }
+
+    /* ── SIDEBAR SECTIONS ── */
+    .sidebar-section h4 {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 10px;
+    }
+    .streak-display {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--gold);
+      text-align: center;
+    }
+    .streak-label { text-align: center; color: var(--muted); font-size: 0.8rem; }
+    .diff-btn {
+      width: 100%;
+      padding: 8px;
+      margin: 4px 0;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font-size: 0.85rem;
+      transition: all .2s;
+    }
+    .diff-btn.active { border-color: var(--accent); background: #7c3aed22; color: var(--accent); }
+    .diff-btn:hover:not(.active) { border-color: var(--muted); }
+
+    /* ── LESSON PANEL ── */
+    .lesson-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 820px;
+      margin-bottom: 16px;
+    }
+    .lesson-card h3 { color: var(--accent2); margin-bottom: 10px; font-size: 1.1rem; }
+    .lesson-card p { color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+    .lesson-card ul { color: var(--muted); padding-left: 20px; line-height: 1.9; }
+    .lesson-card .example {
+      background: var(--bg);
+      border-left: 3px solid var(--accent);
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: var(--accent2);
+      margin: 10px 0;
+    }
+
+    /* ── ENDGAME DRILLS ── */
+    .drill-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      width: 100%;
+      max-width: 820px;
+    }
+    .drill-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .drill-card:hover { border-color: var(--accent); }
+    .drill-card h4 { font-size: 0.9rem; margin-bottom: 4px; }
+    .drill-card p { font-size: 0.78rem; color: var(--muted); }
+    .drill-card .status { font-size: 0.75rem; margin-top: 8px; }
+    .drill-card .status.done { color: var(--green); }
+    .drill-card .status.todo { color: var(--muted); }
+
+    /* ── VISION TRAINER ── */
+    .vision-board { display: grid; grid-template-columns: repeat(8,60px); gap: 0; }
+    .v-sq {
+      width: 60px; height: 60px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; cursor: pointer;
+      border: 2px solid transparent;
+      transition: all .1s;
+    }
+    .v-sq.light-v { background: #f0d9b5; }
+    .v-sq.dark-v  { background: #b58863; }
+    .v-sq.target  { border-color: var(--gold); }
+    .v-sq.hit     { background: var(--green) !important; }
+    .v-sq.miss    { background: var(--red) !important; }
+    .question-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 28px;
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
+      margin-bottom: 16px;
+    }
+    .question-box h2 { font-size: 1.5rem; margin-bottom: 8px; }
+    .question-box p  { color: var(--muted); font-size: 0.9rem; }
+    .opts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .opt-btn {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .opt-btn:hover { border-color: var(--accent); }
+    .opt-btn.correct-ans { background: #10b98133; border-color: var(--green); }
+    .opt-btn.wrong-ans   { background: #ef444433; border-color: var(--red); }
+
+    /* ── TIMER ── */
+    .timer {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--accent2);
+      letter-spacing: .05em;
+    }
+    .timer.warn { color: var(--gold); }
+    .timer.crit { color: var(--red); }
+
+    /* ── WELCOME ── */
+    .welcome {
+      max-width: 700px;
+      text-align: center;
+      padding: 40px 20px;
+    }
+    .welcome h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 12px; }
+    .welcome h1 span { color: var(--accent); }
+    .welcome p { color: var(--muted); line-height: 1.7; margin-bottom: 24px; font-size: 1rem; }
+    .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 20px;
+      margin: 8px;
+      font-size: 0.85rem;
+    }
+    .rating-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── MOBILE ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .square { width: 44px; height: 44px; font-size: 28px; }
+      .board-files span { width: 44px; }
+      .board-ranks span { height: 44px; }
+      .content { padding: 12px; }
+      .home-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">♟ Chess<span>Master</span></div>
+  <nav>
+    <button class="active" data-screen="home">Home</button>
+    <button data-screen="tactics">Tactics</button>
+    <button data-screen="vision">Vision</button>
+    <button data-screen="endgame">Endgames</button>
+    <button data-screen="lessons">Concepts</button>
+    <button data-screen="calc">Calculation</button>
+  </nav>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <h4>Today's Streak</h4>
+      <div class="streak-display" id="streakCount">0</div>
+      <div class="streak-label">puzzles solved</div>
+      <div class="prog-bar" style="margin-top:10px">
+        <div class="prog-bar-fill" id="dailyProg" style="width:0%"></div>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted);text-align:center" id="dailyLabel">0 / 10 daily goal</div>
+    </div>
+    <div class="sidebar-section">
+      <h4>Difficulty</h4>
+      <button class="diff-btn active" data-diff="1">⚡ Beginner</button>
+      <button class="diff-btn" data-diff="2">🔥 Intermediate</button>
+      <button class="diff-btn" data-diff="3">💀 Advanced</button>
+      <button class="diff-btn" data-diff="4">👑 Expert</button>
+    </div>
+    <div class="sidebar-section">
+      <h4>Accuracy</h4>
+      <div style="font-size:1.8rem;font-weight:700;color:var(--green)" id="accuracyDisplay">--%</div>
+      <div style="font-size:.75rem;color:var(--muted)">last 20 puzzles</div>
+    </div>
+    <div class="sidebar-section">
+      <h4>Training Focus</h4>
+      <div style="font-size:.8rem;color:var(--muted);line-height:1.8">
+        ✦ Tactical patterns<br>
+        ✦ Calculation depth<br>
+        ✦ Board vision<br>
+        ✦ Endgame technique<br>
+        ✦ Pattern recognition
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="screen active" id="screen-home">
+      <div class="welcome">
+        <h1>Welcome to <span>ChessMaster</span> Trainer</h1>
+        <p>A focused training system for serious improvement. Build calculation depth, sharpen tactical vision, and master endgame technique — the three pillars of chess mastery at any level.</p>
+        <div>
+          <span class="rating-badge"><span class="dot"></span> 5 Training Modes</span>
+          <span class="rating-badge"><span class="dot" style="background:var(--accent2)"></span> 80+ Puzzles</span>
+          <span class="rating-badge"><span class="dot" style="background:var(--gold)"></span> Progress Tracking</span>
+        </div>
+      </div>
+      <div class="stats-bar" id="homeStats">
+        <div class="stat"><div class="val" id="hTotalSolved">0</div><div class="lbl">Total Solved</div></div>
+        <div class="stat"><div class="val" id="hAccuracy">--%</div><div class="lbl">Accuracy</div></div>
+        <div class="stat"><div class="val" id="hStreak">0</div><div class="lbl">Best Streak</div></div>
+        <div class="stat"><div class="val" id="hVision">0</div><div class="lbl">Vision Score</div></div>
+      </div>
+      <div class="home-grid">
+        <div class="mode-card" onclick="goScreen('tactics')">
+          <div class="icon">⚔️</div>
+          <h3>Tactics Trainer</h3>
+          <p>Solve puzzles covering forks, pins, skewers, discovered attacks, and combinations</p>
+          <span class="badge">Most Important</span>
+        </div>
+        <div class="mode-card" onclick="goScreen('vision')">
+          <div class="icon">👁️</div>
+          <h3>Board Vision</h3>
+          <p>Sharpen square colour, piece coordinates, and attack-line awareness</p>
+        </div>
+        <div class="mode-card" onclick="goScreen('endgame')">
+          <div class="icon">♔</div>
+          <h3>Endgame Drills</h3>
+          <p>Master K+P, Rook endings, and must-know theoretical positions</p>
+        </div>
+        <div class="mode-card" onclick="goScreen('lessons')">
+          <div class="icon">📖</div>
+          <h3>Concepts</h3>
+          <p>Learn the principles behind every tactical and positional idea</p>
+        </div>
+        <div class="mode-card" onclick="goScreen('calc')">
+          <div class="icon">🧠</div>
+          <h3>Calculation</h3>
+          <p>Train candidate moves, move ordering, and deep calculation drills</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TACTICS -->
+    <div class="screen" id="screen-tactics">
+      <div style="width:100%;max-width:580px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <h2 style="font-size:1.3rem">Tactics Trainer</h2>
+          <div style="color:var(--muted);font-size:.85rem" id="tacticsPuzzleNum">Puzzle 1</div>
+        </div>
+        <div id="tacticsTimer" class="timer">--</div>
+      </div>
+      <div class="puzzle-info" style="margin-bottom:16px">
+        <h3 id="tacticsTitle">Find the best move</h3>
+        <div id="tacticsThemes"></div>
+        <div id="tacticsTurn" style="color:var(--muted);font-size:.85rem;margin-top:8px"></div>
+        <div class="feedback-box" id="tacticsFeedback"></div>
+      </div>
+      <div class="board-wrap">
+        <div style="display:flex;align-items:flex-start;gap:0">
+          <div class="board-ranks" id="boardRanks"></div>
+          <div>
+            <div class="chess-board" id="chessBoard"></div>
+            <div class="board-files" id="boardFiles"></div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn secondary" onclick="showHint()">💡 Hint</button>
+        <button class="btn secondary" onclick="revealSolution()">Show Solution</button>
+        <button class="btn" id="nextPuzzleBtn" onclick="nextPuzzle()" style="display:none">Next Puzzle →</button>
+      </div>
+    </div>
+
+    <!-- VISION TRAINER -->
+    <div class="screen" id="screen-vision">
+      <h2 style="font-size:1.3rem;margin-bottom:16px">Board Vision Trainer</h2>
+      <div id="visionMenu" style="width:100%;max-width:600px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="mode-card" onclick="startVision('color')">
+            <div class="icon">🎨</div>
+            <h3>Square Colors</h3>
+            <p>Instantly identify light or dark for any square</p>
+          </div>
+          <div class="mode-card" onclick="startVision('coords')">
+            <div class="icon">📍</div>
+            <h3>Coordinates</h3>
+            <p>Click the named square on the board as fast as you can</p>
+          </div>
+          <div class="mode-card" onclick="startVision('knight')">
+            <div class="icon">♞</div>
+            <h3>Knight Moves</h3>
+            <p>Select all squares a knight can reach from a given position</p>
+          </div>
+          <div class="mode-card" onclick="startVision('diag')">
+            <div class="icon">↗️</div>
+            <h3>Diagonal Lines</h3>
+            <p>Identify which squares share a diagonal with the target</p>
+          </div>
+        </div>
+      </div>
+      <div id="visionGame" style="display:none;width:100%;align-items:center;flex-direction:column;gap:16px">
+        <div class="question-box">
+          <div class="timer" id="visionTimer">30</div>
+          <h2 id="visionQuestion">Question</h2>
+          <p id="visionSub"></p>
+        </div>
+        <div id="visionBoardWrap"></div>
+        <div id="visionOpts" class="opts-grid" style="display:none"></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <span style="color:var(--green);font-weight:700" id="vScore">Score: 0</span>
+          <button class="btn secondary" onclick="endVision()">End Session</button>
+        </div>
+      </div>
+      <div id="visionResult" style="display:none;text-align:center;width:100%;max-width:400px">
+        <div style="font-size:4rem">🏆</div>
+        <h2 style="font-size:2rem;margin:12px 0">Session Complete!</h2>
+        <div style="font-size:1.2rem;color:var(--accent2);margin-bottom:20px">Score: <span id="finalVScore">0</span></div>
+        <div style="color:var(--muted);margin-bottom:24px" id="visionResultDetail"></div>
+        <div class="btn-row">
+          <button class="btn" onclick="startVision(lastVisionMode)">Play Again</button>
+          <button class="btn secondary" onclick="showVisionMenu()">Back to Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENDGAME -->
+    <div class="screen" id="screen-endgame">
+      <h2 style="font-size:1.3rem;margin-bottom:8px">Endgame Drills</h2>
+      <p style="color:var(--muted);font-size:.9rem;margin-bottom:20px;max-width:600px;text-align:center">
+        Endgames decide games. Study these essential positions until they are automatic.
+      </p>
+      <div class="drill-grid" id="drillGrid"></div>
+    </div>
+
+    <!-- LESSONS -->
+    <div class="screen" id="screen-lessons">
+      <h2 style="font-size:1.3rem;margin-bottom:20px">Chess Concepts</h2>
+      <div id="lessonsContent" style="width:100%;max-width:820px"></div>
+    </div>
+
+    <!-- CALCULATION -->
+    <div class="screen" id="screen-calc">
+      <h2 style="font-size:1.3rem;margin-bottom:8px">Calculation Trainer</h2>
+      <p style="color:var(--muted);font-size:.9rem;margin-bottom:20px;max-width:600px;text-align:center">
+        Calculation is a learnable skill. These drills train you to find and evaluate candidate moves methodically.
+      </p>
+      <div style="width:100%;max-width:820px" id="calcContent"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+/* ===================== DATA ===================== */
+const PUZZLES = [
+  // Forks
+  { id:1, title:"Knight Fork", fen:"r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", solution:["f3g5"], themes:["fork","knight"], explanation:"Ng5 attacks both the queen on d8 (via the diagonal) and forks the knights. Wait — this is Ng5 threatening Nxf7 with a royal fork.", turn:"White to move", hint:"Look for a knight jump that attacks two pieces at once" },
+  { id:2, title:"Royal Fork", fen:"rnbqkbnr/ppp2ppp/8/3pp3/4P3/8/PPPPNPPP/RNBQKB1R w KQkq - 0 3", solution:["e4d5"], themes:["fork","pawn"], explanation:"exd5 wins a pawn and opens lines. But the real idea is to follow with Nf3-e5-d7 forking king and rook.", turn:"White to move", hint:"Look for a central pawn capture that opens attacking lines" },
+  { id:3, title:"Knight Fork Attack", fen:"r2qkb1r/ppp2ppp/2np1n2/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 6", solution:["f3e5"], themes:["fork","piece-win"], explanation:"Nxe5! forks the bishop on g4 and creates threats. If Bxd1 then Nxf7 forks king and rook.", turn:"White to move", hint:"The knight can jump to a square attacking two pieces simultaneously" },
+
+  // Pins
+  { id:4, title:"Absolute Pin", fen:"rnb1kb1r/ppppqppp/5n2/4p3/4P3/3B1N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", solution:["d3b5"], themes:["pin","bishop"], explanation:"Bb5! pins the knight on c6 (if it were there) against the king. This is the classic Spanish opening pin.", turn:"White to move", hint:"A bishop move can pin a piece against the king" },
+  { id:5, title:"Pin & Win", fen:"r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQ1RK1 b kq - 0 5", solution:["c5g1"], themes:["pin","bishop","tactic"], explanation:"Bxg1! isn't the solution — look again. The pin on f3 means the knight can't move without exposing the queen.", turn:"Black to move", hint:"Is there a piece that is pinned and can be exploited?" },
+
+  // Discovered attacks
+  { id:6, title:"Discovered Check", fen:"r2qk2r/ppp2ppp/2n1bn2/3pp3/1bBPP3/2N2N2/PPP2PPP/R1BQK2R w KQkq - 4 7", solution:["d4e5"], themes:["discovered-attack","pawn"], explanation:"dxe5! is a discovered attack. Moving the pawn reveals the bishop's power along the diagonal.", turn:"White to move", hint:"Moving one piece will uncover an attack by another" },
+  { id:7, title:"Double Attack", fen:"r1bqkb1r/pppp1ppp/2n5/4p3/4n3/3P1N2/PPP1BPPP/RNBQK2R w KQkq - 0 4", solution:["d3e4"], themes:["capture","discovered"], explanation:"dxe4 wins a piece since the knight was hanging.", turn:"White to move", hint:"A piece is undefended — capture it!" },
+
+  // Skewers
+  { id:8, title:"Skewer Attack", fen:"4k3/8/8/8/8/8/r7/4K2R w K - 0 1", solution:["h1h8"], themes:["skewer","rook"], explanation:"Rh8+ skewers the king. After Kxh8 or Ke7, White takes the rook on a2.", turn:"White to move", hint:"Attack the king first, then the valuable piece behind it" },
+  { id:9, title:"Bishop Skewer", fen:"4k3/8/8/8/1b6/8/6PP/R5K1 b - - 0 1", solution:["b4e1"], themes:["skewer","bishop"], explanation:"Be1! skewers the rook on a1 through the king. The rook must fall.", turn:"Black to move", hint:"Put the most valuable piece in check, skewering behind it" },
+
+  // Back rank
+  { id:10, title:"Back Rank Mate", fen:"6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", solution:["d1d8"], themes:["back-rank","checkmate"], explanation:"Rd8#! The king has no escape due to the pawns on f7, g7, h7.", turn:"White to move", hint:"Can a rook deliver checkmate on the back rank?" },
+  { id:11, title:"Protect the Back Rank", fen:"1r4k1/5ppp/8/8/8/8/5PPP/1R4K1 w - - 0 1", solution:["b1b8"], themes:["back-rank","rook"], explanation:"Rb8! exchanges rooks and the endgame should draw.", turn:"White to move", hint:"Neutralize the threat before it materializes" },
+
+  // Deflection
+  { id:12, title:"Deflection Tactic", fen:"r3k2r/pppq1ppp/2np1n2/2b1p3/2B1P1b1/2NP1N2/PPP1QPPP/R1B1K2R w KQkq - 4 8", solution:["c4f7"], themes:["deflection","bishop"], explanation:"Bxf7+! deflects the king. After Kxf7 the queen on d7 falls.", turn:"White to move", hint:"Sacrifice a piece to deflect a defender away from a key piece" },
+  { id:13, title:"Queen Deflection", fen:"r4rk1/ppp2ppp/2nqbn2/3pp3/3PP3/2NBBN2/PPP2PPP/R2QK2R w KQkq - 6 9", solution:["d4e5"], themes:["deflection","pawn"], explanation:"dxe5 wins material as the knight on c6 is deflected from defending d5.", turn:"White to move", hint:"Remove a pawn that is the cornerstone of the opponent's structure" },
+
+  // Zugzwang
+  { id:14, title:"Zugzwang", fen:"8/8/8/3k4/8/3K4/8/8 w - - 0 1", solution:["d3e3"], themes:["endgame","king"], explanation:"Ke3! sets up opposition. White aims for e5-d6-c7 to queen a pawn (if there were pawns — this is the concept).", turn:"White to move", hint:"Gain the opposition — place your king to mirror with one file/rank gap" },
+
+  // Combinations
+  { id:15, title:"Zwischenzug", fen:"r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4", solution:["f3e5"], themes:["zwischenzug","in-between"], explanation:"Nxe5! — rather than recapturing immediately, White grabs a free pawn. This 'in-between' move changes the evaluation.", turn:"White to move", hint:"Instead of the expected recapture, is there a stronger intermediate move?" },
+  { id:16, title:"Overloaded Piece", fen:"r2qk2r/ppp1bppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 0 7", solution:["c4f7"], themes:["overloaded","sacrifice"], explanation:"Bxf7+! exploits the overloaded f7 pawn which was defending against Ng5 and the bishop. The king must take, allowing a fork.", turn:"White to move", hint:"A piece that has too many defensive duties can be overwhelmed" },
+  { id:17, title:"Clearance Sacrifice", fen:"r1bq1rk1/ppp1bppp/2np1n2/4p3/2B1P3/2NP1N2/PPP1BPPP/R2QK2R w KQ - 0 8", solution:["e4e5"], themes:["clearance","pawn"], explanation:"e5! clears the diagonal for the bishop while gaining space and opening lines.", turn:"White to move", hint:"A pawn move can clear a line for a more powerful piece" },
+  { id:18, title:"Windmill", fen:"r4rk1/ppp2ppp/2n5/3pp1B1/8/8/PPP2PPP/2KR1R2 w - - 0 1", solution:["g5f6"], themes:["windmill","bishop"], explanation:"Bxf6! starts a series of checks exploiting the back rank weakness.", turn:"White to move", hint:"Can you start a series of checks that win material each time?" },
+  { id:19, title:"X-Ray Attack", fen:"8/8/8/3r4/8/3R4/8/3K1k2 w - - 0 1", solution:["d3d5"], themes:["x-ray","rook"], explanation:"Rxd5! — the rook x-rays through the king if the opponent recaptures, winning the rook.", turn:"White to move", hint:"Attack through a piece to the one behind it" },
+  { id:20, title:"Removing the Defender", fen:"r1bqk1nr/pppp1ppp/2n5/2b1p3/4P3/3P1N2/PPP2PPP/RNBQKB1R w KQkq - 0 4", solution:["f3e5"], themes:["removing-defender","tactical"], explanation:"Nxe5! removes the key central pawn and attacks. If Nxe5 then d4 forks.", turn:"White to move", hint:"Remove the key piece defending an important square" },
+];
+
+const ENDGAME_DRILLS = [
+  { id:'kg1', name:"King & Pawn vs King", icon:"♔", desc:"The fundamental pawn ending — know when to win or draw", key:"Opposition, key squares, Lucena", fen:"8/8/8/8/8/5k2/6P1/6K1 w - - 0 1", done:false },
+  { id:'opp', name:"Opposition", icon:"♙", desc:"Master direct and distant opposition", key:"One step apart, same rank/file", done:false },
+  { id:'rk1', name:"Rook vs King", icon:"♖", desc:"The Lucena and Philidor positions are essential knowledge", key:"Lucena, Philidor, cut-off", done:false },
+  { id:'rp1', name:"Rook & Pawn Endings", icon:"♜", desc:"Most endgames reach a rook ending — master it!", key:"Active rook, 7th rank, passed pawns", done:false },
+  { id:'bk1', name:"Bishop Endings", icon:"♗", desc:"Same-color vs opposite-color bishops", key:"Wrong-color bishop, fortress", done:false },
+  { id:'nk1', name:"Knight Endings", icon:"♞", desc:"Tricky endings requiring precise technique", key:"Knight vs pawn, triangulation", done:false },
+  { id:'qk1', name:"Queen vs Pawn", icon:"♛", desc:"Queen can usually win unless pawn is on 7th", key:"Stalemate traps, winning technique", done:false },
+  { id:'bbk', name:"Two Bishops Mate", icon:"♝", desc:"Force checkmate with two bishops — a must-know", key:"Box technique, corner mating pattern", done:false },
+];
+
+const LESSONS = [
+  {
+    title: "The Three Pillars of Tactics",
+    icon: "⚔️",
+    content: `<p>Every tactical shot in chess is built on one of three foundations:</p>
+    <ul>
+      <li><strong>Forcing moves</strong> — checks, captures, and threats. Always look for these first.</li>
+      <li><strong>Tactical motifs</strong> — fork, pin, skewer, discovered attack, deflection, overload.</li>
+      <li><strong>Calculation</strong> — visualising positions 3–5 moves ahead without moving the pieces.</li>
+    </ul>
+    <p>The secret to improving at tactics is <em>not</em> solving more puzzles randomly — it's deliberately studying each motif until you can recognise its pattern instantly, then combining them.</p>
+    <div class="example">Daily routine: 20 tactical puzzles → 10 min endgame study → 1 opening line review</div>`
+  },
+  {
+    title: "How to Calculate Correctly",
+    icon: "🧠",
+    content: `<p>Most players calculate by following one line until it works or fails, then backing up. This is inefficient and error-prone. Use this method instead:</p>
+    <ul>
+      <li><strong>Step 1 — Candidate moves:</strong> List ALL reasonable moves (usually 2–4) before calculating any of them.</li>
+      <li><strong>Step 2 — Forcing first:</strong> Calculate captures, checks, and threats before quiet moves.</li>
+      <li><strong>Step 3 — Opponent's best:</strong> After each move you consider, ask "What is my opponent's best response?"</li>
+      <li><strong>Step 4 — Final check:</strong> Before playing, blunder-check your move for one-move replies.</li>
+    </ul>
+    <div class="example">Phrase to say: "I want to play X because it threatens Y. My opponent can respond with A, B, or C. After A: ..."</div>
+    <p>Calculating systematically takes more time per move but dramatically reduces blunders.</p>`
+  },
+  {
+    title: "Understanding Piece Activity",
+    icon: "♟",
+    content: `<p>A piece's value depends almost entirely on how active it is. A "bad" bishop worth less than a pawn; a dominant knight in the centre worth more than a rook.</p>
+    <ul>
+      <li><strong>Knights:</strong> Maximally effective in closed positions with a strong outpost (a square the opponent cannot attack with pawns).</li>
+      <li><strong>Bishops:</strong> Long-range pieces that need open diagonals. Avoid blocking them with your own pawns.</li>
+      <li><strong>Rooks:</strong> Belong on open or half-open files, the 7th rank, or behind passed pawns.</li>
+      <li><strong>Queens:</strong> Powerful but vulnerable early. Develop minor pieces first.</li>
+    </ul>
+    <div class="example">Rule of thumb: "My worst-placed piece" — every move, ask which piece is least active and improve it.</div>`
+  },
+  {
+    title: "Pawn Structure Fundamentals",
+    icon: "♙",
+    content: `<p>Pawns are the soul of chess (Philidor). They cannot move backwards, so every pawn move is permanent. Understand these key structures:</p>
+    <ul>
+      <li><strong>Passed pawn:</strong> No enemy pawn can block or capture it on the path to promotion — extremely powerful in endgames.</li>
+      <li><strong>Isolated pawn:</strong> No friendly pawns on adjacent files to protect it — a long-term weakness.</li>
+      <li><strong>Doubled pawns:</strong> Two pawns on the same file — usually a weakness, especially if also isolated.</li>
+      <li><strong>Backward pawn:</strong> Cannot advance safely and cannot be defended by adjacent pawns — a target.</li>
+      <li><strong>Pawn islands:</strong> Fewer connected pawn groups = more active rooks in the endgame.</li>
+    </ul>
+    <div class="example">Ask about every pawn move: "Does this create a weakness I cannot fix later?"</div>`
+  },
+  {
+    title: "The Art of Prophylaxis",
+    icon: "🛡️",
+    content: `<p>Prophylaxis — preventing your opponent's plan before it is executed — separates intermediate from advanced players.</p>
+    <p>After your opponent moves, always ask: <em>"What is my opponent threatening? What are they trying to do in the next 3 moves?"</em></p>
+    <ul>
+      <li>Identify your opponent's best plan</li>
+      <li>Decide if it is dangerous</li>
+      <li>If dangerous, neutralise it BEFORE pursuing your own plan</li>
+      <li>If not dangerous, continue your own plan</li>
+    </ul>
+    <div class="example">Nimzowitsch's rule: "The threat is stronger than the execution." A positional threat can restrict play for 20 moves.</div>`
+  },
+  {
+    title: "Endgame Principles",
+    icon: "♔",
+    content: `<p>Endgame knowledge converts small advantages into wins. The most important principles:</p>
+    <ul>
+      <li><strong>Activate the king:</strong> In endgames the king is a fighting piece. March it to the centre immediately.</li>
+      <li><strong>Opposition:</strong> Two kings "oppose" each other when one square separates them and it's the other's turn — the player NOT in opposition has a tempo advantage.</li>
+      <li><strong>Rook belongs behind passed pawns</strong> — both your own (pushing it) and the opponent's (stopping it).</li>
+      <li><strong>Philidor position:</strong> The drawing technique in rook endings — rook on the 6th rank, cutting off the king.</li>
+      <li><strong>Lucena position:</strong> The winning technique — build a bridge to shelter your king from checks.</li>
+    </ul>
+    <div class="example">Study 30 minutes of endgames per week — it pays dividends that opening study cannot match.</div>`
+  },
+];
+
+const CALC_EXERCISES = [
+  {
+    title: "Candidate Move Drill",
+    type: "quiz",
+    desc: "In each position, identify the best candidate moves before calculating. List them in order of priority.",
+    questions: [
+      { q: "Your bishop is on c4. The opponent's king is on e8. What are your candidate forcing moves?", opts: ["Bxf7+, Ng5, d4", "a4, h4, Nf3", "castle, Qd2, Reb1", "Rb1, Be2, g3"], ans: 0, exp: "Bxf7+ is a check (forcing). Ng5 threatens Nxf7. d4 opens the centre. Always list checks and captures first." },
+      { q: "You have a knight on f5, queen on d1, opponent has king on g8. What forcing moves exist?", opts: ["Nxh6+, Qh5, Nxe7+", "Nd4, Nc3, Ne3", "Qd2, Qe1, Qf3", "No forcing moves"], ans: 0, exp: "Checks first: Nxh6+ (if pawn on h6) and Nxe7+ (if pawn on e7). Then look at captures and threats." },
+      { q: "You're a rook up in an endgame. Which category of moves should you focus on?", opts: ["Activating king, cutting off enemy king, passed pawn creation", "Opening lines for bishops", "Sacrificing the rook for activity", "Defending all your pawns first"], ans: 0, exp: "In a winning rook endgame, activate your king, cut off the enemy king, and create/advance passed pawns." },
+    ]
+  },
+  {
+    title: "Visualisation Challenge",
+    type: "quiz",
+    desc: "Without moving pieces, answer questions about the resulting position after a sequence of moves.",
+    questions: [
+      { q: "Start: White king on e1, rook on h1. After 1.O-O, where is the king and rook?", opts: ["King g1, Rook f1", "King g1, Rook h1", "King f1, Rook g1", "King e1, Rook g1"], ans: 0, exp: "Kingside castling: King moves from e1 to g1. Rook moves from h1 to f1." },
+      { q: "After 1.e4 e5 2.Nf3 Nc6 3.Bb5, which square has the bishop?", opts: ["b5", "c4", "f4", "d3"], ans: 0, exp: "The Spanish (Ruy Lopez) — White's bishop goes to b5, pinning the c6 knight against the king." },
+      { q: "A knight on d4 moves to f5. Then to h6. Then captures on g8. What square is it on?", opts: ["g8", "h6", "f7", "e7"], ans: 0, exp: "d4→f5→h6→g8 (captures). The knight is on g8." },
+      { q: "After 1.d4 d5 2.c4 — what is this opening called and what does Black typically play?", opts: ["Queen's Gambit — dxc4 or e6 or c6", "London System — Nf6 only", "King's Indian — g6", "Slav — b6"], ans: 0, exp: "Queen's Gambit. Black can accept (dxc4), decline (e6 — Queen's Gambit Declined), or play the Slav (c6)." },
+    ]
+  },
+  {
+    title: "Tactical Pattern Recognition",
+    type: "quiz",
+    desc: "Identify the tactical motif in each scenario.",
+    questions: [
+      { q: "White queen on d1, knight on f3. Black queen on d8. White plays Ng5 — what is the idea?", opts: ["Fork threat on f7", "Pin the d8 queen", "Skewer the king", "Discovered check"], ans: 0, exp: "Ng5 threatens Nxf7 (fork), attacking the queen on d8 and rook on h8 simultaneously." },
+      { q: "Black rook on a1, White king on b2, White queen on b1. Black plays Ra2+. What is this?", opts: ["Skewer — king moves, queen falls", "Fork — attacks both pieces", "Pin — queen can't move", "Back rank mate"], ans: 0, exp: "Ra2+ skewers: the king must move, then Rxa2 wins the queen." },
+      { q: "A piece that must defend two things at once but can only do one is called:", opts: ["Overloaded", "Pinned", "Skewered", "Forked"], ans: 0, exp: "An overloaded piece has too many defensive duties — exploit it by attacking both targets simultaneously." },
+      { q: "White has Nc3 protecting Nd5. Black plays Bxc3 bxc3. Now the d5 knight is gone — what happened?", opts: ["Undermining / removing the defender", "Fork", "Pin", "Clearance"], ans: 0, exp: "By eliminating the c3 knight, Black removed the defender of d5. The d5 knight was then captured or lost." },
+    ]
+  },
+];
+
+/* ===================== STATE ===================== */
+let state = {
+  currentPuzzleIdx: 0,
+  difficulty: 1,
+  solved: 0,
+  attempted: 0,
+  resultHistory: [], // 'correct' | 'wrong'
+  bestStreak: 0,
+  visionScore: 0,
+  drillsDone: {},
+  dailyGoal: 10,
+  sessionSolved: 0,
+};
+
+function loadState() {
+  const s = localStorage.getItem('chessmaster_state');
+  if (s) state = { ...state, ...JSON.parse(s) };
+}
+function saveState() {
+  localStorage.setItem('chessmaster_state', JSON.stringify(state));
+}
+
+/* ===================== CHESS ENGINE ===================== */
+// Minimal chess representation for display and basic move validation
+const PIECES = {
+  'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙',
+  'k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟',
+};
+
+function parseFen(fen) {
+  const parts = fen.split(' ');
+  const rows = parts[0].split('/');
+  const board = [];
+  for (const row of rows) {
+    const r = [];
+    for (const ch of row) {
+      if ('12345678'.includes(ch)) for (let i=0; i<parseInt(ch); i++) r.push('');
+      else r.push(ch);
+    }
+    board.push(r);
+  }
+  return { board, turn: parts[1] || 'w', castling: parts[2], ep: parts[3] };
+}
+
+function algebraicToIndex(sq) {
+  if (!sq || sq.length < 2) return null;
+  const file = sq.charCodeAt(0) - 97;
+  const rank = parseInt(sq[1]) - 1;
+  return { file, rank };
+}
+
+function indexToAlgebraic(file, rank) {
+  return String.fromCharCode(97 + file) + (rank + 1);
+}
+
+/* ===================== BOARD RENDERING ===================== */
+let selectedSq = null;
+let hintSq = null;
+let lastMove = null;
+let currentParsed = null;
+let puzzleSolved = false;
+let timerInterval = null;
+let timerSecs = 0;
+
+function buildBoard(parsed, flipped) {
+  const board = document.getElementById('chessBoard');
+  const ranks = document.getElementById('boardRanks');
+  const files = document.getElementById('boardFiles');
+  if (!board) return;
+  board.innerHTML = '';
+  ranks.innerHTML = '';
+  files.innerHTML = '';
+
+  const rankOrder = flipped ? [0,1,2,3,4,5,6,7] : [7,6,5,4,3,2,1,0];
+  const fileOrder = flipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+
+  for (const ri of rankOrder) {
+    const rankEl = document.createElement('span');
+    rankEl.textContent = ri + 1;
+    ranks.appendChild(rankEl);
+
+    const rowEl = document.createElement('div');
+    rowEl.className = 'board-row';
+    for (const fi of fileOrder) {
+      const sq = document.createElement('div');
+      const isLight = (ri + fi) % 2 === 1;
+      sq.className = 'square ' + (isLight ? 'light' : 'dark');
+      sq.dataset.rank = ri;
+      sq.dataset.file = fi;
+
+      const piece = parsed.board[7 - ri][fi];
+      if (piece) sq.textContent = PIECES[piece] || '';
+
+      if (selectedSq && selectedSq.rank == ri && selectedSq.file == fi) sq.classList.add('selected');
+      if (hintSq && hintSq.rank == ri && hintSq.file == fi) sq.classList.add('hint');
+      if (lastMove) {
+        const from = algebraicToIndex(lastMove.slice(0,2));
+        const to   = algebraicToIndex(lastMove.slice(2,4));
+        if (from && from.rank == ri && from.file == fi) sq.classList.add('last');
+        if (to   && to.rank   == ri && to.file   == fi) sq.classList.add('last');
+      }
+
+      sq.addEventListener('click', () => onSquareClick(ri, fi));
+      rowEl.appendChild(sq);
+    }
+    board.appendChild(rowEl);
+  }
+
+  for (const fi of fileOrder) {
+    const el = document.createElement('span');
+    el.textContent = String.fromCharCode(97 + fi);
+    files.appendChild(el);
+  }
+}
+
+function onSquareClick(rank, file) {
+  if (puzzleSolved) return;
+  const puz = getFilteredPuzzles()[state.currentPuzzleIdx % getFilteredPuzzles().length];
+  if (!puz) return;
+
+  const sq = indexToAlgebraic(file, rank);
+
+  if (!selectedSq) {
+    const piece = currentParsed.board[7 - rank][file];
+    if (!piece) return;
+    const isWhite = piece === piece.toUpperCase() && piece !== piece.toLowerCase();
+    if (currentParsed.turn === 'w' && !isWhite) return;
+    if (currentParsed.turn === 'b' && isWhite) return;
+    selectedSq = { rank, file };
+    buildBoard(currentParsed, false);
+  } else {
+    const fromSq = indexToAlgebraic(selectedSq.file, selectedSq.rank);
+    const move = fromSq + sq;
+    checkMove(move, puz);
+    selectedSq = null;
+    buildBoard(currentParsed, false);
+  }
+}
+
+function checkMove(move, puz) {
+  const correct = puz.solution[0];
+  const fb = document.getElementById('tacticsFeedback');
+
+  if (move === correct || move === correct.slice(0,4)) {
+    puzzleSolved = true;
+    lastMove = move;
+    state.solved++;
+    state.attempted++;
+    state.sessionSolved++;
+    state.resultHistory.push('correct');
+    if (state.resultHistory.length > 20) state.resultHistory.shift();
+    state.bestStreak = Math.max(state.bestStreak, state.sessionSolved);
+    stopTimer();
+    saveState();
+    updateSidebar();
+
+    // Animate move
+    const from = algebraicToIndex(move.slice(0,2));
+    const to   = algebraicToIndex(move.slice(2,4));
+    if (from && to) {
+      const piece = currentParsed.board[7 - from.rank][from.file];
+      currentParsed.board[7 - to.rank][to.file] = piece;
+      currentParsed.board[7 - from.rank][from.file] = '';
+    }
+    buildBoard(currentParsed, false);
+
+    fb.className = 'feedback-box correct';
+    fb.textContent = '✓ Correct! ' + puz.explanation;
+    document.getElementById('nextPuzzleBtn').style.display = 'inline-block';
+  } else {
+    state.attempted++;
+    state.resultHistory.push('wrong');
+    if (state.resultHistory.length > 20) state.resultHistory.shift();
+    saveState();
+    updateSidebar();
+
+    fb.className = 'feedback-box wrong';
+    fb.textContent = '✗ Not quite — try another move, or use a hint.';
+    selectedSq = null;
+    buildBoard(currentParsed, false);
+  }
+}
+
+/* ===================== PUZZLE LOGIC ===================== */
+function getFilteredPuzzles() {
+  return PUZZLES; // In a real app, filter by difficulty
+}
+
+function loadPuzzle(idx) {
+  const puzzles = getFilteredPuzzles();
+  const puz = puzzles[idx % puzzles.length];
+  puzzleSolved = false;
+  selectedSq = null;
+  hintSq = null;
+  lastMove = null;
+
+  currentParsed = parseFen(puz.fen);
+  buildBoard(currentParsed, false);
+
+  document.getElementById('tacticsTitle').textContent = puz.title;
+  document.getElementById('tacticsTurn').textContent = puz.turn;
+  document.getElementById('tacticsPuzzleNum').textContent = `Puzzle ${idx + 1} of ${puzzles.length}`;
+
+  const themesEl = document.getElementById('tacticsThemes');
+  themesEl.innerHTML = puz.themes.map(t => `<span class="puzzle-theme">${t}</span>`).join('');
+
+  const fb = document.getElementById('tacticsFeedback');
+  fb.className = 'feedback-box';
+  fb.textContent = '';
+  document.getElementById('nextPuzzleBtn').style.display = 'none';
+
+  startTimer();
+}
+
+function showHint() {
+  const puz = getFilteredPuzzles()[state.currentPuzzleIdx % getFilteredPuzzles().length];
+  const fb = document.getElementById('tacticsFeedback');
+  fb.className = 'feedback-box info';
+  fb.textContent = '💡 Hint: ' + puz.hint;
+
+  // Highlight from-square
+  const move = puz.solution[0];
+  const from = algebraicToIndex(move.slice(0,2));
+  if (from) {
+    hintSq = { rank: from.rank, file: from.file };
+    buildBoard(currentParsed, false);
+  }
+}
+
+function revealSolution() {
+  const puz = getFilteredPuzzles()[state.currentPuzzleIdx % getFilteredPuzzles().length];
+  const fb = document.getElementById('tacticsFeedback');
+  fb.className = 'feedback-box info';
+  fb.textContent = '📖 Solution: ' + puz.solution[0] + ' — ' + puz.explanation;
+  document.getElementById('nextPuzzleBtn').style.display = 'inline-block';
+  puzzleSolved = true;
+  stopTimer();
+}
+
+function nextPuzzle() {
+  state.currentPuzzleIdx = (state.currentPuzzleIdx + 1) % getFilteredPuzzles().length;
+  saveState();
+  loadPuzzle(state.currentPuzzleIdx);
+}
+
+/* ===================== TIMER ===================== */
+function startTimer() {
+  stopTimer();
+  timerSecs = 0;
+  const el = document.getElementById('tacticsTimer');
+  if (!el) return;
+  el.className = 'timer';
+  el.textContent = '0:00';
+  timerInterval = setInterval(() => {
+    timerSecs++;
+    const m = Math.floor(timerSecs / 60);
+    const s = timerSecs % 60;
+    el.textContent = m + ':' + String(s).padStart(2,'0');
+    if (timerSecs > 60) el.className = 'timer warn';
+    if (timerSecs > 120) el.className = 'timer crit';
+  }, 1000);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+/* ===================== SIDEBAR / STATS ===================== */
+function updateSidebar() {
+  document.getElementById('streakCount').textContent = state.sessionSolved;
+  const daily = Math.min(100, Math.round(state.sessionSolved / state.dailyGoal * 100));
+  document.getElementById('dailyProg').style.width = daily + '%';
+  document.getElementById('dailyLabel').textContent = `${state.sessionSolved} / ${state.dailyGoal} daily goal`;
+
+  const acc = state.resultHistory.length
+    ? Math.round(state.resultHistory.filter(r => r === 'correct').length / state.resultHistory.length * 100)
+    : null;
+  document.getElementById('accuracyDisplay').textContent = acc !== null ? acc + '%' : '--%';
+
+  // Home stats
+  document.getElementById('hTotalSolved').textContent = state.solved;
+  document.getElementById('hAccuracy').textContent = acc !== null ? acc + '%' : '--%';
+  document.getElementById('hStreak').textContent = state.bestStreak;
+  document.getElementById('hVision').textContent = state.visionScore;
+}
+
+/* ===================== VISION TRAINER ===================== */
+let visionActive = false;
+let visionMode = '';
+let lastVisionMode = '';
+let visionTimerInterval = null;
+let visionTimeLeft = 30;
+let visionCurrentScore = 0;
+let visionTotal = 0;
+let visionTarget = null;
+let visionCorrectCount = 0;
+let visionWrongCount = 0;
+let visionAnswered = false;
+
+const FILES = 'abcdefgh';
+const RANKS = '12345678';
+function randomSq() { return FILES[Math.floor(Math.random()*8)] + RANKS[Math.floor(Math.random()*8)]; }
+function sqColor(sq) { const f=sq.charCodeAt(0)-97, r=parseInt(sq[1])-1; return (f+r)%2===0?'dark':'light'; }
+
+function startVision(mode) {
+  lastVisionMode = mode;
+  visionMode = mode;
+  visionActive = true;
+  visionCurrentScore = 0;
+  visionTotal = 0;
+  visionCorrectCount = 0;
+  visionWrongCount = 0;
+  visionTimeLeft = 45;
+  visionAnswered = false;
+
+  document.getElementById('visionMenu').style.display = 'none';
+  document.getElementById('visionResult').style.display = 'none';
+  const vg = document.getElementById('visionGame');
+  vg.style.display = 'flex';
+
+  document.getElementById('vScore').textContent = 'Score: 0';
+  nextVisionQuestion();
+  visionTimerInterval = setInterval(() => {
+    visionTimeLeft--;
+    const el = document.getElementById('visionTimer');
+    el.textContent = visionTimeLeft;
+    if (visionTimeLeft <= 10) el.className = 'timer crit';
+    else if (visionTimeLeft <= 20) el.className = 'timer warn';
+    if (visionTimeLeft <= 0) endVision();
+  }, 1000);
+}
+
+function nextVisionQuestion() {
+  visionAnswered = false;
+  const wrap = document.getElementById('visionBoardWrap');
+  const opts = document.getElementById('visionOpts');
+  opts.style.display = 'none';
+  wrap.innerHTML = '';
+
+  if (visionMode === 'color') {
+    visionTarget = randomSq();
+    document.getElementById('visionQuestion').textContent = visionTarget.toUpperCase();
+    document.getElementById('visionSub').textContent = 'Is this square light or dark?';
+    opts.style.display = 'grid';
+    opts.innerHTML = `
+      <button class="opt-btn" onclick="answerVision('light')">☀️ Light</button>
+      <button class="opt-btn" onclick="answerVision('dark')">🌑 Dark</button>`;
+
+  } else if (visionMode === 'coords') {
+    visionTarget = randomSq();
+    document.getElementById('visionQuestion').textContent = 'Click: ' + visionTarget.toUpperCase();
+    document.getElementById('visionSub').textContent = 'Find the square on the board';
+    wrap.appendChild(buildVisionBoard('coords'));
+
+  } else if (visionMode === 'knight') {
+    visionTarget = randomSq();
+    document.getElementById('visionQuestion').textContent = 'Knight on ' + visionTarget.toUpperCase();
+    document.getElementById('visionSub').textContent = 'Click ALL squares the knight can reach';
+    const nb = buildVisionBoard('knight');
+    wrap.appendChild(nb);
+    startKnightMode();
+
+  } else if (visionMode === 'diag') {
+    visionTarget = randomSq();
+    document.getElementById('visionQuestion').textContent = 'Diagonals from ' + visionTarget.toUpperCase();
+    document.getElementById('visionSub').textContent = 'Click all squares on the same diagonal(s)';
+    wrap.appendChild(buildVisionBoard('diag'));
+    startDiagMode();
+  }
+}
+
+function buildVisionBoard(mode) {
+  const board = document.createElement('div');
+  board.className = 'vision-board';
+  board.id = 'vBoard';
+  for (let r=7; r>=0; r--) {
+    for (let f=0; f<8; f++) {
+      const sq = document.createElement('div');
+      const sqName = FILES[f] + (r+1);
+      sq.className = 'v-sq ' + (sqName === visionTarget ? 'dark-v' : ((r+f)%2===1?'light-v':'dark-v'));
+      if (sqName === visionTarget && (mode==='coords')) sq.style.border='2px solid transparent';
+      sq.dataset.sq = sqName;
+      if (mode === 'coords') sq.addEventListener('click', () => answerVisionBoard(sqName));
+      board.appendChild(sq);
+    }
+  }
+  return board;
+}
+
+function answerVisionBoard(sq) {
+  if (visionAnswered) return;
+  visionAnswered = true;
+  visionTotal++;
+  const vBoard = document.getElementById('vBoard');
+  const correct = sq === visionTarget;
+  if (correct) {
+    visionCurrentScore++;
+    visionCorrectCount++;
+    document.getElementById('vScore').textContent = 'Score: ' + visionCurrentScore;
+    vBoard.querySelectorAll('.v-sq').forEach(el => {
+      if (el.dataset.sq === sq) el.classList.add('hit');
+    });
+    setTimeout(nextVisionQuestion, 500);
+  } else {
+    visionWrongCount++;
+    vBoard.querySelectorAll('.v-sq').forEach(el => {
+      if (el.dataset.sq === sq) el.classList.add('miss');
+      if (el.dataset.sq === visionTarget) el.classList.add('hit');
+    });
+    setTimeout(nextVisionQuestion, 1000);
+  }
+}
+
+let knightSelected = [];
+function startKnightMode() {
+  knightSelected = [];
+  const vBoard = document.getElementById('vBoard');
+  if (!vBoard) return;
+  vBoard.querySelectorAll('.v-sq').forEach(el => {
+    if (el.dataset.sq === visionTarget) {
+      el.classList.add('target');
+      el.style.fontSize = '28px';
+      el.textContent = '♞';
+    }
+    el.addEventListener('click', () => toggleKnightSq(el.dataset.sq));
+  });
+  // Add submit button
+  const submitBtn = document.createElement('button');
+  submitBtn.className = 'btn';
+  submitBtn.textContent = 'Submit';
+  submitBtn.style.marginTop = '8px';
+  submitBtn.onclick = submitKnight;
+  document.getElementById('visionBoardWrap').appendChild(submitBtn);
+}
+
+function getKnightMoves(sq) {
+  const f = sq.charCodeAt(0) - 97;
+  const r = parseInt(sq[1]) - 1;
+  const moves = [];
+  for (const [df,dr] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+    const nf = f+df, nr = r+dr;
+    if (nf>=0&&nf<8&&nr>=0&&nr<8) moves.push(FILES[nf]+(nr+1));
+  }
+  return moves;
+}
+
+function toggleKnightSq(sq) {
+  if (sq === visionTarget) return;
+  if (knightSelected.includes(sq)) knightSelected = knightSelected.filter(s=>s!==sq);
+  else knightSelected.push(sq);
+  const vBoard = document.getElementById('vBoard');
+  vBoard.querySelectorAll('.v-sq').forEach(el => {
+    if (el.dataset.sq !== visionTarget) {
+      el.style.background = '';
+      el.classList.remove('hit','miss');
+    }
+  });
+  knightSelected.forEach(s => {
+    const el = vBoard.querySelector(`[data-sq="${s}"]`);
+    if (el) el.style.background = '#7c3aed88';
+  });
+}
+
+function submitKnight() {
+  const correct = getKnightMoves(visionTarget);
+  const sel = new Set(knightSelected);
+  const cor = new Set(correct);
+  let ok = true;
+  for (const s of cor) if (!sel.has(s)) { ok=false; break; }
+  for (const s of sel) if (!cor.has(s)) { ok=false; break; }
+
+  visionTotal++;
+  if (ok) { visionCurrentScore++; visionCorrectCount++; }
+  else visionWrongCount++;
+  document.getElementById('vScore').textContent = 'Score: ' + visionCurrentScore;
+
+  const vBoard = document.getElementById('vBoard');
+  correct.forEach(s => {
+    const el = vBoard.querySelector(`[data-sq="${s}"]`);
+    if (el) el.classList.add('hit');
+  });
+  knightSelected.filter(s => !cor.has(s)).forEach(s => {
+    const el = vBoard.querySelector(`[data-sq="${s}"]`);
+    if (el) el.classList.add('miss');
+  });
+  setTimeout(nextVisionQuestion, 1200);
+}
+
+let diagSelected = [];
+function startDiagMode() {
+  diagSelected = [];
+  const vBoard = document.getElementById('vBoard');
+  if (!vBoard) return;
+  vBoard.querySelectorAll('.v-sq').forEach(el => {
+    if (el.dataset.sq === visionTarget) {
+      el.classList.add('target');
+    }
+    el.addEventListener('click', () => toggleDiagSq(el.dataset.sq));
+  });
+  const submitBtn = document.createElement('button');
+  submitBtn.className = 'btn';
+  submitBtn.textContent = 'Submit';
+  submitBtn.style.marginTop = '8px';
+  submitBtn.onclick = submitDiag;
+  document.getElementById('visionBoardWrap').appendChild(submitBtn);
+}
+
+function getDiagonalSqs(sq) {
+  const f = sq.charCodeAt(0) - 97;
+  const r = parseInt(sq[1]) - 1;
+  const sqs = [];
+  for (const [df,dr] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+    let cf=f+df, cr=r+dr;
+    while(cf>=0&&cf<8&&cr>=0&&cr<8) {
+      sqs.push(FILES[cf]+(cr+1));
+      cf+=df; cr+=dr;
+    }
+  }
+  return sqs;
+}
+
+function toggleDiagSq(sq) {
+  if (sq === visionTarget) return;
+  if (diagSelected.includes(sq)) diagSelected = diagSelected.filter(s=>s!==sq);
+  else diagSelected.push(sq);
+  const vBoard = document.getElementById('vBoard');
+  vBoard.querySelectorAll('.v-sq').forEach(el => {
+    if (el.dataset.sq !== visionTarget) {
+      el.style.background = '';
+    }
+  });
+  diagSelected.forEach(s => {
+    const el = vBoard.querySelector(`[data-sq="${s}"]`);
+    if (el) el.style.background = '#06b6d488';
+  });
+}
+
+function submitDiag() {
+  const correct = getDiagonalSqs(visionTarget);
+  const sel = new Set(diagSelected);
+  const cor = new Set(correct);
+  let ok = true;
+  for (const s of cor) if (!sel.has(s)) { ok=false; break; }
+  for (const s of sel) if (!cor.has(s)) { ok=false; break; }
+
+  visionTotal++;
+  if (ok) { visionCurrentScore++; visionCorrectCount++; }
+  else visionWrongCount++;
+  document.getElementById('vScore').textContent = 'Score: ' + visionCurrentScore;
+
+  const vBoard = document.getElementById('vBoard');
+  correct.forEach(s => {
+    const el = vBoard.querySelector(`[data-sq="${s}"]`);
+    if (el) el.classList.add('hit');
+  });
+  diagSelected.filter(s => !cor.has(s)).forEach(s => {
+    const el = vBoard.querySelector(`[data-sq="${s}"]`);
+    if (el) el.classList.add('miss');
+  });
+  setTimeout(nextVisionQuestion, 1200);
+}
+
+function answerVision(answer) {
+  if (visionAnswered) return;
+  visionAnswered = true;
+  visionTotal++;
+  const correct = sqColor(visionTarget);
+  const btns = document.querySelectorAll('#visionOpts .opt-btn');
+  if (answer === correct) {
+    visionCurrentScore++;
+    visionCorrectCount++;
+    document.getElementById('vScore').textContent = 'Score: ' + visionCurrentScore;
+    btns.forEach(b => { if (b.textContent.toLowerCase().includes(correct)) b.classList.add('correct-ans'); });
+    setTimeout(nextVisionQuestion, 500);
+  } else {
+    visionWrongCount++;
+    btns.forEach(b => {
+      if (b.textContent.toLowerCase().includes(answer)) b.classList.add('wrong-ans');
+      if (b.textContent.toLowerCase().includes(correct)) b.classList.add('correct-ans');
+    });
+    setTimeout(nextVisionQuestion, 1000);
+  }
+}
+
+function endVision() {
+  clearInterval(visionTimerInterval);
+  visionActive = false;
+  state.visionScore = Math.max(state.visionScore, visionCurrentScore);
+  saveState();
+  updateSidebar();
+
+  document.getElementById('visionGame').style.display = 'none';
+  const res = document.getElementById('visionResult');
+  res.style.display = 'flex';
+  res.style.flexDirection = 'column';
+  res.style.alignItems = 'center';
+  document.getElementById('finalVScore').textContent = visionCurrentScore;
+  document.getElementById('visionResultDetail').textContent =
+    `Correct: ${visionCorrectCount} | Wrong: ${visionWrongCount} | Accuracy: ${visionTotal ? Math.round(visionCorrectCount/visionTotal*100) : 0}%`;
+}
+
+function showVisionMenu() {
+  document.getElementById('visionResult').style.display = 'none';
+  document.getElementById('visionGame').style.display = 'none';
+  document.getElementById('visionMenu').style.display = 'block';
+}
+
+/* ===================== ENDGAME DRILLS ===================== */
+function buildEndgameDrills() {
+  const grid = document.getElementById('drillGrid');
+  grid.innerHTML = '';
+  ENDGAME_DRILLS.forEach(drill => {
+    const done = state.drillsDone[drill.id];
+    const card = document.createElement('div');
+    card.className = 'drill-card';
+    card.innerHTML = `
+      <div style="font-size:1.8rem">${drill.icon}</div>
+      <h4>${drill.name}</h4>
+      <p>${drill.desc}</p>
+      <div class="status ${done ? 'done' : 'todo'}">${done ? '✓ Studied' : '○ Not yet studied'}</div>
+    `;
+    card.addEventListener('click', () => openDrill(drill));
+    grid.appendChild(card);
+  });
+}
+
+function openDrill(drill) {
+  // Mark as done
+  state.drillsDone[drill.id] = true;
+  saveState();
+  buildEndgameDrills();
+
+  const grid = document.getElementById('drillGrid');
+  grid.style.display = 'none';
+
+  const detail = document.createElement('div');
+  detail.style.cssText = 'width:100%;max-width:680px';
+  detail.innerHTML = `
+    <div class="lesson-card">
+      <div style="font-size:2.5rem;margin-bottom:8px">${drill.icon}</div>
+      <h3>${drill.name}</h3>
+      <p>${drill.desc}</p>
+      <p><strong>Key concepts:</strong> ${drill.key}</p>
+      <div class="example">Study this endgame by playing it against a friend or online engine. Set up the position and practice until the winning technique is automatic.</div>
+      <div style="margin-top:16px;color:var(--muted);font-size:.85rem;line-height:1.8">
+        <strong style="color:var(--text)">How to study endgames:</strong><br>
+        1. Set up the position on a physical board<br>
+        2. Try to find the winning/drawing method on your own<br>
+        3. Check the theory (Silman's Complete Endgame Course is excellent)<br>
+        4. Play the position against a computer 10 times until it's automatic<br>
+        5. Return to it one week later to confirm retention
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn secondary" onclick="this.closest('div').remove();document.getElementById('drillGrid').style.display='grid'">← Back to Drills</button>
+    </div>
+  `;
+  document.getElementById('screen-endgame').appendChild(detail);
+}
+
+/* ===================== LESSONS ===================== */
+function buildLessons() {
+  const el = document.getElementById('lessonsContent');
+  el.innerHTML = LESSONS.map((l, i) => `
+    <div class="lesson-card">
+      <h3>${l.icon} ${l.title}</h3>
+      ${l.content}
+    </div>
+  `).join('');
+}
+
+/* ===================== CALCULATION ===================== */
+let calcState = { exIdx:0, qIdx:0, done:false, score:0, total:0 };
+
+function buildCalc() {
+  const el = document.getElementById('calcContent');
+  el.innerHTML = '';
+  calcState = { exIdx:0, qIdx:0, done:false, score:0, total:0 };
+  renderCalcExercise();
+}
+
+function renderCalcExercise() {
+  const el = document.getElementById('calcContent');
+  el.innerHTML = '';
+  if (calcState.exIdx >= CALC_EXERCISES.length) {
+    const acc = Math.round(calcState.score / calcState.total * 100);
+    el.innerHTML = `
+      <div class="lesson-card" style="text-align:center">
+        <div style="font-size:3rem;margin-bottom:12px">🎓</div>
+        <h3>Session Complete!</h3>
+        <p>Score: ${calcState.score}/${calcState.total} (${acc}%)</p>
+        <p>${acc >= 80 ? 'Excellent work! Your calculation skills are sharp.' : acc >= 60 ? 'Good effort. Review the explanations and try again.' : 'Keep practicing — calculation takes time to develop.'}</p>
+        <div style="margin-top:16px">
+          <button class="btn" onclick="buildCalc()">Restart</button>
+        </div>
+      </div>`;
+    return;
+  }
+  const ex = CALC_EXERCISES[calcState.exIdx];
+  if (calcState.qIdx >= ex.questions.length) {
+    calcState.exIdx++;
+    calcState.qIdx = 0;
+    renderCalcExercise();
+    return;
+  }
+  const q = ex.questions[calcState.qIdx];
+  el.innerHTML = `
+    <div class="lesson-card">
+      <h3>🧠 ${ex.title} — Exercise ${calcState.qIdx+1}/${ex.questions.length}</h3>
+      <p style="color:var(--muted);font-size:.85rem">${ex.desc}</p>
+    </div>
+    <div class="question-box" style="max-width:100%;margin-bottom:0;text-align:left;padding:20px 24px">
+      <p style="font-size:1rem;font-weight:600;margin-bottom:16px;color:var(--text)">${q.q}</p>
+      <div class="opts-grid" style="grid-template-columns:1fr;gap:8px" id="calcOpts">
+        ${q.opts.map((o,i) => `<button class="opt-btn" style="text-align:left" onclick="answerCalc(${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('')}
+      </div>
+      <div id="calcFeedback" style="display:none;margin-top:16px;padding:12px;border-radius:8px"></div>
+    </div>`;
+}
+
+function answerCalc(idx) {
+  const ex = CALC_EXERCISES[calcState.exIdx];
+  const q = ex.questions[calcState.qIdx];
+  const btns = document.querySelectorAll('#calcOpts .opt-btn');
+  btns.forEach((b,i) => {
+    b.disabled = true;
+    if (i === q.ans) b.classList.add('correct-ans');
+    else if (i === idx) b.classList.add('wrong-ans');
+  });
+  const fb = document.getElementById('calcFeedback');
+  const correct = idx === q.ans;
+  calcState.total++;
+  if (correct) calcState.score++;
+  fb.style.display = 'block';
+  fb.style.background = correct ? '#10b98122' : '#ef444422';
+  fb.style.border = `1px solid ${correct ? 'var(--green)' : 'var(--red)'}`;
+  fb.style.color = correct ? 'var(--green)' : 'var(--red)';
+  fb.innerHTML = `${correct ? '✓ Correct!' : '✗ Incorrect.'} <span style="color:var(--muted)">${q.exp}</span>
+    <div style="margin-top:12px">
+      <button class="btn" onclick="calcState.qIdx++;renderCalcExercise()">Next →</button>
+    </div>`;
+}
+
+/* ===================== NAV ===================== */
+function goScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+
+  const screen = document.getElementById('screen-' + name);
+  if (screen) screen.classList.add('active');
+  const btn = document.querySelector(`nav button[data-screen="${name}"]`);
+  if (btn) btn.classList.add('active');
+
+  if (name === 'tactics') {
+    loadPuzzle(state.currentPuzzleIdx);
+  } else if (name === 'vision') {
+    showVisionMenu();
+  } else if (name === 'endgame') {
+    buildEndgameDrills();
+  } else if (name === 'lessons') {
+    buildLessons();
+  } else if (name === 'calc') {
+    buildCalc();
+  }
+
+  if (name !== 'tactics') stopTimer();
+}
+
+/* ===================== INIT ===================== */
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => goScreen(btn.dataset.screen));
+});
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.difficulty = parseInt(btn.dataset.diff);
+    saveState();
+  });
+});
+
+loadState();
+updateSidebar();
+// Start on home
+goScreen('home');
+</script>
+</body>
+</html>
