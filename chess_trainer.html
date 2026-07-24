@@ -124,6 +124,15 @@ main{display:flex;flex:1;overflow:hidden;}
 /* result dots */
 .result-dots{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
 .rdot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+/* rating */
+.rating-badge{font-size:2rem;font-weight:800;color:var(--gold);text-align:center;line-height:1;letter-spacing:-.02em;}
+.rating-delta{font-size:.78rem;font-weight:700;display:inline-block;padding:1px 6px;border-radius:8px;vertical-align:middle;margin-left:4px;}
+.rating-delta.up{background:#10b98122;color:var(--green);}
+.rating-delta.dn{background:#ef444422;color:var(--red);}
+.srs-row{display:flex;justify-content:space-between;font-size:.73rem;color:var(--muted);margin-top:6px;}
+.srs-boxes{display:flex;gap:3px;margin-top:6px;}
+.srs-box{flex:1;height:6px;border-radius:3px;background:var(--border);}
+.srs-box.filled{background:var(--accent);}
 /* calc */
 .calc-q{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 22px;width:100%;max-width:800px;margin-bottom:14px;}
 /* scrollbar */
@@ -162,10 +171,28 @@ main{display:flex;flex:1;overflow:hidden;}
 <main>
 <aside class="sidebar">
   <div class="sb-section">
+    <h4>Puzzle Rating</h4>
+    <div class="rating-badge" id="ratingBadge">800</div>
+    <div style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:3px">your elo</div>
+    <div class="prog-bar" style="margin-top:8px"><div class="prog-fill" id="ratingProg" style="width:0%"></div></div>
+    <div style="font-size:.72rem;color:var(--muted);text-align:center" id="ratingLabel">Beginner</div>
+  </div>
+  <div class="sb-section">
+    <h4>Review Queue (SRS)</h4>
+    <div class="srs-row">
+      <span>Due now: <strong id="srsDue" style="color:var(--red)">0</strong></span>
+      <span>Learned: <strong id="srsLearned" style="color:var(--green)">0</strong></span>
+    </div>
+    <div class="srs-row" style="margin-top:3px">
+      <span>New: <strong id="srsNew" style="color:var(--accent2)">0</strong></span>
+      <span>Mastered: <strong id="srsMastered" style="color:var(--gold)">0</strong></span>
+    </div>
+    <div class="srs-boxes" id="srsBoxViz" style="margin-top:8px"></div>
+  </div>
+  <div class="sb-section">
     <h4>Session Streak</h4>
     <div class="streak-n" id="streakCount">0</div>
-    <div style="text-align:center;color:var(--muted);font-size:.78rem">puzzles solved today</div>
-    <div class="prog-bar" style="margin-top:8px"><div class="prog-fill" id="dailyProg" style="width:0%"></div></div>
+    <div class="prog-bar" style="margin-top:6px"><div class="prog-fill" id="dailyProg" style="width:0%"></div></div>
     <div style="font-size:.73rem;color:var(--muted);text-align:center" id="dailyLabel">0 / 10 daily goal</div>
   </div>
   <div class="sb-section">
@@ -180,12 +207,6 @@ main{display:flex;flex:1;overflow:hidden;}
     <div style="font-size:1.7rem;font-weight:700;color:var(--green)" id="accuracyDisplay">--%</div>
     <div class="result-dots" id="resultDots"></div>
   </div>
-  <div class="sb-section">
-    <h4>Training Focus</h4>
-    <div style="font-size:.78rem;color:var(--muted);line-height:1.9">
-      ✦ Tactical patterns<br>✦ Calculation depth<br>✦ Board vision<br>✦ Endgame technique<br>✦ Opening principles
-    </div>
-  </div>
 </aside>
 
 <div class="content">
@@ -197,6 +218,7 @@ main{display:flex;flex:1;overflow:hidden;}
     <p style="color:var(--muted);line-height:1.7;font-size:.95rem">A focused training system for serious improvement. Build calculation depth, sharpen tactical vision, and master endgame technique — the three pillars of chess mastery.</p>
   </div>
   <div class="stats-bar">
+    <div class="stat"><div class="val" id="hRating" style="color:var(--gold)">800</div><div class="lbl">Puzzle Rating</div></div>
     <div class="stat"><div class="val" id="hSolved">0</div><div class="lbl">Total Solved</div></div>
     <div class="stat"><div class="val" id="hAcc">--%</div><div class="lbl">Accuracy</div></div>
     <div class="stat"><div class="val" id="hStreak">0</div><div class="lbl">Best Streak</div></div>
@@ -352,6 +374,9 @@ const PUZZLES = [
   {id:26,title:"Smothered Back Rank",fen:"5rk1/5ppp/8/8/8/8/5PPP/5R1K w - - 0 1",solution:["f1f8"],themes:["back-rank","checkmate"],difficulty:1,explanation:"Rxf8#! Swapping rooks is checkmate because the black king on g8 is smothered by its own pawns. It cannot recapture or escape.",turn:"White to move",hint:"Exchanging rooks here is actually checkmate — why?"},
   {id:27,title:"Free Bishop",fen:"4k3/8/8/8/3n4/8/8/4K1B1 w - - 0 1",solution:["g1d4"],themes:["capture"],difficulty:1,explanation:"Bxd4! The knight on d4 is completely undefended. The bishop sweeps along the diagonal and wins a piece for free.",turn:"White to move",hint:"A bishop diagonal reaches an undefended piece"},
   {id:28,title:"The Ruy Lopez Pin",fen:"r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",solution:["a7a6"],themes:["pin","opening"],difficulty:2,explanation:"a6! — the Morphy Defence. Black challenges the Bb5 pin immediately. The bishop must decide: retreat, take on c6, or go to a4.",turn:"Black to move",hint:"Challenge the pin by attacking the bishop directly"},
+  {id:29,title:"Ladder Mate",fen:"k7/1R6/1K6/8/8/8/8/8 w - - 0 1",solution:["b7b8"],themes:["checkmate","rook"],difficulty:1,explanation:"Rb8#! The rook slides to b8 delivering checkmate. The black king on a8 cannot go to b8 (occupied), a7 (covered by Kb6), or b7 (covered by Rb8 on the b-file). Classic king-and-rook mate technique.",turn:"White to move",hint:"The rook delivers mate — where should it go?"},
+  {id:30,title:"Two Rooks — Smothered",fen:"6k1/5ppp/8/8/8/8/5PPP/3RR1K1 w - - 0 1",solution:["d1d8"],themes:["checkmate","back-rank"],difficulty:1,explanation:"Rd8#! The black king on g8 is completely smothered by its own pawns on f7, g7, h7. The rook delivers checkmate along the 8th rank. All squares — f8, g8 (occupied), h8 — are covered by Rd8.",turn:"White to move",hint:"March one rook to the back rank — the king cannot escape its own pawns"},
+  {id:31,title:"Queen + King Corner Mate",fen:"8/8/8/8/8/5K2/5Q2/7k w - - 0 1",solution:["f2g1"],themes:["checkmate","queen"],difficulty:1,explanation:"Qg1#! The queen slides diagonally to g1, covering the entire first rank (attacking h1) and diagonal (h2). White's king on f3 covers g2. The black king on h1 has no square to escape to.",turn:"White to move",hint:"The queen moves diagonally one square to deliver checkmate"},
 ];
 
 const OPENINGS = [
@@ -443,11 +468,47 @@ let state = {
   currentPuzzleIdx:0, difficulty:4, solved:0, attempted:0,
   resultHistory:[], bestStreak:0, visionScore:0, drillsDone:{},
   dailyGoal:10,
+  playerRating:800,
+  srs:{}, // {puzzleId: {box,nextReview,attempts,successes}}
 };
 let sessionSolved = 0; // intentionally NOT saved to localStorage
 
 function loadState(){const s=localStorage.getItem('cm_state2');if(s)state={...state,...JSON.parse(s)};}
 function saveState(){localStorage.setItem('cm_state2',JSON.stringify(state));}
+
+/* ===== SRS (Leitner boxes) ===== */
+const SRS_INTERVALS=[0,1,2,4,8,16]; // days between reviews per box 0-5
+function getSrs(id){return state.srs[id]||{box:0,nextReview:0,attempts:0,successes:0};}
+function updateSrs(id,correct){
+  const s=Object.assign({},getSrs(id));
+  s.attempts++;
+  if(correct){s.successes++;s.box=Math.min(5,s.box+1);}
+  else s.box=0;
+  s.nextReview=Date.now()+SRS_INTERVALS[s.box]*86400000;
+  state.srs[id]=s;
+}
+function getDueQueue(){
+  const now=Date.now();const all=getFilteredPuzzles();
+  const due=all.filter(p=>getSrs(p.id).attempts>0&&getSrs(p.id).nextReview<=now);
+  const fresh=all.filter(p=>getSrs(p.id).attempts===0);
+  const future=all.filter(p=>getSrs(p.id).attempts>0&&getSrs(p.id).nextReview>now);
+  return [...shuffleArr(due),...fresh,...future];
+}
+function shuffleArr(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+/* ===== ELO ===== */
+const PUZZLE_RATINGS={1:800,2:1050,3:1300,4:1600};
+function puzzleElo(p){return PUZZLE_RATINGS[p.difficulty]||1000;}
+function updateElo(playerR,puzzleR,won){
+  const K=32,exp=1/(1+Math.pow(10,(puzzleR-playerR)/400));
+  return Math.max(100,Math.round(playerR+K*((won?1:0)-exp)));
+}
+function ratingTitle(r){
+  if(r<1000)return'Beginner';if(r<1200)return'Club Player';
+  if(r<1400)return'Intermediate';if(r<1600)return'Advanced';
+  if(r<1800)return'Expert';if(r<2000)return'Candidate Master';
+  if(r<2200)return'FIDE Master';return'International Master';
+}
 
 /* ===== CHESS ENGINE ===== */
 const PIECES={'K':'♔','Q':'♕','R':'♖','B':'♗','N':'♘','P':'♙','k':'♚','q':'♛','r':'♜','b':'♝','n':'♞','p':'♟'};
@@ -600,14 +661,17 @@ function onThemeChange(){
   loadPuzzle(0);
 }
 
+let srsQueue=[];
 function loadPuzzle(idx){
-  const puzzles=getFilteredPuzzles();
-  if(!puzzles.length){
+  srsQueue=getDueQueue();
+  if(!srsQueue.length){
     document.getElementById('tacFb').className='fb info';
     document.getElementById('tacFb').textContent='No puzzles match the current filter. Try a different theme or difficulty.';
     return;
   }
-  const puz=puzzles[idx%puzzles.length];
+  const qi=idx%srsQueue.length;
+  const puz=srsQueue[qi];
+  state.currentPuzzleIdx=qi;
   puzzleSolved=false;puzzleStep=0;
   selectedSq=null;candidateSqs=[];hintSq=null;lastMoveFrom=null;lastMoveTo=null;
   boardFlipped=puz.turn==='Black to move';
@@ -615,7 +679,10 @@ function loadPuzzle(idx){
   buildBoard(currentParsed,boardFlipped);
   document.getElementById('tacTitle').textContent=puz.title;
   document.getElementById('tacTurn').textContent=puz.turn;
-  document.getElementById('tacNum').textContent=`Puzzle ${(idx%puzzles.length)+1} of ${puzzles.length}`;
+  const srs=getSrs(puz.id);
+  const boxLabel=srs.attempts===0?'New':srs.box===5?'Mastered':`Box ${srs.box}`;
+  const puzR=puzzleElo(puz);
+  document.getElementById('tacNum').innerHTML=`<span style="color:var(--muted)">SRS: ${boxLabel}</span> &nbsp; <span style="color:var(--accent2)">Puzzle Elo: ${puzR}</span>`;
   document.getElementById('tacThemes').innerHTML=puz.themes.map(t=>`<span class="puz-theme">${t}</span>`).join('');
   const fb=document.getElementById('tacFb');fb.className='fb';fb.textContent='';
   document.getElementById('nextBtn').style.display='none';
@@ -637,10 +704,15 @@ function checkMove(move,puz){
       state.resultHistory.push('correct');
       if(state.resultHistory.length>20)state.resultHistory.shift();
       state.bestStreak=Math.max(state.bestStreak,sessionSolved);
+      updateSrs(puz.id,true);
+      const oldR=state.playerRating;
+      state.playerRating=updateElo(oldR,puzzleElo(puz),true);
+      const delta=state.playerRating-oldR;
       stopTimer();saveState();updateSidebar();
       buildBoard(currentParsed,boardFlipped);
       playSound('correct');
-      fb.className='fb correct';fb.innerHTML='✓ Excellent! '+puz.explanation;
+      const deltaHtml=`<span class="rating-delta up">+${delta} (${state.playerRating})</span>`;
+      fb.className='fb correct';fb.innerHTML=`✓ Excellent! ${deltaHtml} — ${puz.explanation}`;
       document.getElementById('nextBtn').style.display='inline-block';
     } else {
       // Computer responds
@@ -658,11 +730,16 @@ function checkMove(move,puz){
   } else {
     state.attempted++;state.resultHistory.push('wrong');
     if(state.resultHistory.length>20)state.resultHistory.shift();
+    updateSrs(puz.id,false);
+    const oldR=state.playerRating;
+    state.playerRating=updateElo(oldR,puzzleElo(puz),false);
+    const delta=state.playerRating-oldR;
     saveState();updateSidebar();
     selectedSq=null;candidateSqs=[];
     playSound('wrong');
     buildBoard(currentParsed,boardFlipped);
-    fb.className='fb wrong';fb.textContent='✗ Not the best move — try again, or use a hint.';
+    const deltaHtml=`<span class="rating-delta dn">${delta} (${state.playerRating})</span>`;
+    fb.className='fb wrong';fb.innerHTML=`✗ Not the best move ${deltaHtml} — try again, or use a hint.`;
   }
 }
 
@@ -688,9 +765,7 @@ function showSolution(){
 }
 
 function nextPuzzle(){
-  const puzzles=getFilteredPuzzles();
-  state.currentPuzzleIdx=(state.currentPuzzleIdx+1)%puzzles.length;
-  saveState();loadPuzzle(state.currentPuzzleIdx);
+  loadPuzzle(state.currentPuzzleIdx+1);
 }
 
 /* ===== TIMER ===== */
@@ -711,10 +786,40 @@ function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterva
 
 /* ===== SIDEBAR ===== */
 function updateSidebar(){
+  // Rating
+  const r=state.playerRating;
+  document.getElementById('ratingBadge').textContent=r;
+  if(document.getElementById('hRating'))document.getElementById('hRating').textContent=r;
+  const rPct=Math.min(100,Math.round((r-100)/22));
+  document.getElementById('ratingProg').style.width=rPct+'%';
+  document.getElementById('ratingLabel').textContent=ratingTitle(r);
+  // SRS stats
+  const now=Date.now();const all=PUZZLES;
+  let due=0,fresh=0,learned=0,mastered=0;
+  for(const p of all){
+    const s=getSrs(p.id);
+    if(s.attempts===0)fresh++;
+    else if(s.box===5)mastered++;
+    else if(s.nextReview<=now)due++;
+    else learned++;
+  }
+  document.getElementById('srsDue').textContent=due;
+  document.getElementById('srsNew').textContent=fresh;
+  document.getElementById('srsLearned').textContent=learned;
+  document.getElementById('srsMastered').textContent=mastered;
+  const viz=document.getElementById('srsBoxViz');
+  if(viz){
+    const counts=[0,0,0,0,0,0];
+    for(const p of all){const s=getSrs(p.id);if(s.attempts>0)counts[s.box]++;}
+    const total=all.length;
+    viz.innerHTML=counts.map((c,i)=>`<div class="srs-box" title="Box ${i}: ${c}" style="background:${c>0?`hsl(${120+i*20},60%,50%)`:'var(--border)'};flex:${Math.max(1,c)}"></div>`).join('');
+  }
+  // Streak
   document.getElementById('streakCount').textContent=sessionSolved;
   const d=Math.min(100,Math.round(sessionSolved/state.dailyGoal*100));
   document.getElementById('dailyProg').style.width=d+'%';
   document.getElementById('dailyLabel').textContent=`${sessionSolved} / ${state.dailyGoal} daily goal`;
+  // Accuracy
   const corr=state.resultHistory.filter(r=>r==='correct').length;
   const acc=state.resultHistory.length?Math.round(corr/state.resultHistory.length*100):null;
   document.getElementById('accuracyDisplay').textContent=acc!==null?acc+'%':'--%';
