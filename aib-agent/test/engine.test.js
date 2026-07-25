@@ -390,7 +390,7 @@ describe('catalogue', () => {
 
   test('revenue is the declared share of premium', async () => {
     const { TPA_REVENUE_SHARE } = await import('../src/config.js');
-    assert.equal(estimateRevenueTTD('property_all_risk', 100_000), 17_500);
+    assert.equal(estimateRevenueTTD('property_all_risk', 100_000), 7_800);
     // Administration revenue follows the configured relationship, not a constant.
     assert.equal(estimateRevenueTTD('cardea_tpa', 100_000), Math.round(100_000 * TPA_REVENUE_SHARE));
   });

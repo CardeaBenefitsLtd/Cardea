@@ -7,6 +7,12 @@
  * placeholders for sizing an opportunity — they are not quotes, and the README
  * says so in the words a compliance officer would want.
  *
+ * Brokerage rates are empirical: derived from AIB's own IBR transaction
+ * register (61,605 transactions, Dec 2024 - Jun 2026), as realised brokerage
+ * over gross premium per profit centre. They are what AIB actually earned on
+ * that business, not a rate card, so they already carry the mix of negotiated
+ * terms and overrides in the book. Blended across all lines it comes to 8.5%.
+ *
  * `basis` tells the estimator how to size a premium:
  *   per_life     - benefits lines, priced per covered life per year
  *   per_vehicle  - motor fleet
@@ -49,7 +55,7 @@ export const CATALOGUE = {
     basis: 'rate_on_sum',
     rate: 0.0035,
     minPremiumTTD: 6000,
-    revenueRate: 0.175,
+    revenueRate: 0.078, // Property
   },
   business_interruption: {
     key: 'business_interruption',
@@ -60,7 +66,7 @@ export const CATALOGUE = {
     basis: 'rate_on_sum',
     rate: 0.0042,
     minPremiumTTD: 8000,
-    revenueRate: 0.175,
+    revenueRate: 0.078, // Property
     requires: ['property_all_risk'],
   },
   motor_fleet: {
@@ -72,7 +78,7 @@ export const CATALOGUE = {
     basis: 'per_vehicle',
     rate: 4200,
     minPremiumTTD: 12000,
-    revenueRate: 0.15,
+    revenueRate: 0.15, // Motor Vehicle
   },
   marine_cargo: {
     key: 'marine_cargo',
@@ -83,7 +89,7 @@ export const CATALOGUE = {
     basis: 'rate_on_sum',
     rate: 0.0045,
     minPremiumTTD: 5000,
-    revenueRate: 0.15,
+    revenueRate: 0.129, // Marine, Aviation and Transport
   },
   public_liability: {
     key: 'public_liability',
@@ -94,7 +100,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.0011,
     minPremiumTTD: 7000,
-    revenueRate: 0.175,
+    revenueRate: 0.088, // Liability
   },
   employers_liability: {
     key: 'employers_liability',
@@ -105,7 +111,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.0009,
     minPremiumTTD: 6000,
-    revenueRate: 0.175,
+    revenueRate: 0.088, // Liability
   },
   products_liability: {
     key: 'products_liability',
@@ -116,7 +122,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.001,
     minPremiumTTD: 7500,
-    revenueRate: 0.175,
+    revenueRate: 0.088, // Liability
   },
   professional_indemnity: {
     key: 'professional_indemnity',
@@ -127,7 +133,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.0014,
     minPremiumTTD: 9000,
-    revenueRate: 0.175,
+    revenueRate: 0.088, // Liability
   },
   directors_officers: {
     key: 'directors_officers',
@@ -138,7 +144,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.0012,
     minPremiumTTD: 12000,
-    revenueRate: 0.175,
+    revenueRate: 0.088, // Liability
   },
   cyber_liability: {
     key: 'cyber_liability',
@@ -149,7 +155,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.0016,
     minPremiumTTD: 10000,
-    revenueRate: 0.2,
+    revenueRate: 0.088, // Liability
   },
   contractors_all_risk: {
     key: 'contractors_all_risk',
@@ -160,7 +166,7 @@ export const CATALOGUE = {
     basis: 'rate_on_sum',
     rate: 0.005,
     minPremiumTTD: 15000,
-    revenueRate: 0.175,
+    revenueRate: 0.078, // Property
   },
   machinery_breakdown: {
     key: 'machinery_breakdown',
@@ -171,7 +177,7 @@ export const CATALOGUE = {
     basis: 'rate_on_sum',
     rate: 0.0028,
     minPremiumTTD: 6000,
-    revenueRate: 0.175,
+    revenueRate: 0.078, // Property
     requires: ['property_all_risk'],
   },
   money_fidelity: {
@@ -182,7 +188,7 @@ export const CATALOGUE = {
       'Cash in transit and on premises, plus employee dishonesty. Small premium, high attach rate, and an easy round-out at renewal.',
     basis: 'flat',
     rate: 9000,
-    revenueRate: 0.175,
+    revenueRate: 0.136, // Pecuniary Loss
   },
   group_personal_accident: {
     key: 'group_personal_accident',
@@ -193,7 +199,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 320,
     minPremiumTTD: 5000,
-    revenueRate: 0.175,
+    revenueRate: 0.172, // Personal Accident Short Term
   },
 
   // --------------------------------------------------------------- benefits
@@ -206,7 +212,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 6200,
     minPremiumTTD: 40000,
-    revenueRate: 0.1,
+    revenueRate: 0.061, // Accident and Sickness
   },
   intl_health_usd: {
     key: 'intl_health_usd',
@@ -219,7 +225,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 8900,
     minPremiumTTD: 60000,
-    revenueRate: 0.1,
+    revenueRate: 0.061, // Accident and Sickness
   },
   group_life: {
     key: 'group_life',
@@ -230,7 +236,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 1400,
     minPremiumTTD: 15000,
-    revenueRate: 0.125,
+    revenueRate: 0.077, // Life
   },
   group_critical_illness: {
     key: 'group_critical_illness',
@@ -241,7 +247,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 900,
     minPremiumTTD: 12000,
-    revenueRate: 0.125,
+    revenueRate: 0.061, // Accident and Sickness
     requires: ['group_health_local'],
   },
   dental_rider: {
@@ -253,7 +259,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 780,
     minPremiumTTD: 8000,
-    revenueRate: 0.1,
+    revenueRate: 0.061, // Accident and Sickness
     requires: ['group_health_local'],
   },
   vision_rider: {
@@ -265,7 +271,7 @@ export const CATALOGUE = {
     basis: 'per_life',
     rate: 420,
     minPremiumTTD: 5000,
-    revenueRate: 0.1,
+    revenueRate: 0.061, // Accident and Sickness
     requires: ['group_health_local'],
   },
   group_pension: {
@@ -277,7 +283,7 @@ export const CATALOGUE = {
     basis: 'pct_revenue',
     rate: 0.0008,
     minPremiumTTD: 25000,
-    revenueRate: 0.08,
+    revenueRate: 0.077, // Life
   },
 
   // --------------------------------------------------------------- personal
@@ -288,7 +294,7 @@ export const CATALOGUE = {
     description: 'Comprehensive or third-party cover on a private vehicle.',
     basis: 'flat',
     rate: 5200,
-    revenueRate: 0.15,
+    revenueRate: 0.15, // Motor Vehicle
   },
   homeowners: {
     key: 'homeowners',
@@ -298,7 +304,7 @@ export const CATALOGUE = {
     basis: 'rate_on_sum',
     rate: 0.0032,
     minPremiumTTD: 2500,
-    revenueRate: 0.175,
+    revenueRate: 0.078, // Property
   },
   individual_life: {
     key: 'individual_life',
@@ -308,7 +314,7 @@ export const CATALOGUE = {
       'Personal term or whole of life cover. The natural landing place for a dependant ageing off a group plan.',
     basis: 'flat',
     rate: 7200,
-    revenueRate: 0.3,
+    revenueRate: 0.077, // Life
   },
   travel: {
     key: 'travel',
@@ -317,7 +323,7 @@ export const CATALOGUE = {
     description: 'Medical and trip cover for individuals and families travelling overseas.',
     basis: 'flat',
     rate: 1800,
-    revenueRate: 0.25,
+    revenueRate: 0.061, // Accident and Sickness
   },
 
   // ------------------------------------------ health administration services
