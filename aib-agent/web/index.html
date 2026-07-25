@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIB Brokerage Analyst</title>
+<style>
+  :root {
+    --aib: #092b90;
+    --aib-tint: #eef1fb;
+    --accent: #c8102e;
+    --ink: #16181d;
+    --muted: #5f6673;
+    --line: #e2e5ec;
+    --bg: #f6f7fa;
+    --card: #fff;
+    --strong: #1a7f4b;
+    --moderate: #b26a00;
+    --weak: #7a808c;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  a { color: var(--aib); }
+  button { font: inherit; cursor: pointer; }
+
+  header {
+    background: var(--aib); color: #fff; padding: 14px 22px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  header img { height: 34px; border-radius: 4px; background: #fff; padding: 3px; }
+  header h1 { font-size: 17px; }
+  header .stats { margin-left: auto; display: flex; gap: 20px; font-size: 13px; opacity: .9; flex-wrap: wrap; }
+  header .stats b { display: block; font-size: 16px; font-weight: 650; }
+
+  nav { background: var(--card); border-bottom: 1px solid var(--line); padding: 0 22px; display: flex; gap: 4px; }
+  nav button {
+    background: none; border: 0; padding: 13px 16px; color: var(--muted);
+    border-bottom: 2px solid transparent; font-weight: 550;
+  }
+  nav button[aria-selected="true"] { color: var(--aib); border-bottom-color: var(--aib); }
+
+  main { padding: 22px; max-width: 1320px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  select, input[type="text"], input[type="search"] {
+    font: inherit; padding: 8px 11px; border: 1px solid var(--line);
+    border-radius: 7px; background: var(--card); color: var(--ink); min-width: 0;
+  }
+  .btn {
+    background: var(--aib); color: #fff; border: 0; border-radius: 7px;
+    padding: 9px 16px; font-weight: 550;
+  }
+  .btn:disabled { background: var(--weak); cursor: not-allowed; }
+  .btn.ghost { background: var(--card); color: var(--aib); border: 1px solid var(--line); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+  .list { max-height: 72vh; overflow-y: auto; }
+  .list-row {
+    padding: 11px 14px; border-bottom: 1px solid var(--line); cursor: pointer;
+  }
+  .list-row:last-child { border-bottom: 0; }
+  .list-row:hover { background: var(--aib-tint); }
+  .list-row[aria-current="true"] { background: var(--aib-tint); box-shadow: inset 3px 0 0 var(--aib); }
+  .list-row .name { font-weight: 600; }
+  .list-row .meta { font-size: 12.5px; color: var(--muted); }
+
+  .opp { padding: 15px 17px; border-bottom: 1px solid var(--line); }
+  .opp:last-child { border-bottom: 0; }
+  .opp .top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .opp .rank { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 28px; }
+  .opp .client { font-weight: 620; }
+  .opp .headline { margin: 5px 0 0 38px; }
+  .opp .facts { margin: 7px 0 0 38px; font-size: 12.5px; color: var(--muted); display: flex; gap: 16px; flex-wrap: wrap; }
+  .opp .rationale { margin: 9px 0 0 38px; color: #33383f; font-size: 14px; }
+  .opp .evidence { margin: 8px 0 0 38px; font-size: 12.5px; color: var(--muted); }
+  .opp .evidence code { background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+
+  .tag {
+    font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    background: var(--aib-tint); color: var(--aib); text-transform: uppercase; letter-spacing: .03em;
+  }
+  .tag.cardea { background: #fdecef; color: var(--accent); }
+  .tag.soon { background: #fff4e0; color: var(--moderate); }
+  .strong { color: var(--strong); font-weight: 600; }
+  .moderate { color: var(--moderate); font-weight: 600; }
+  .weak { color: var(--weak); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .section-title { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .stack > * + * { margin-top: 18px; }
+  .pad { padding: 17px; }
+
+  .log {
+    font: 12.5px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #11141c; color: #c8d0e0; border-radius: var(--radius);
+    padding: 13px 15px; max-height: 220px; overflow-y: auto; white-space: pre-wrap;
+  }
+  .log .t { color: #7f8ba3; }
+
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  .notice { background: #fff8e6; border: 1px solid #f0dfae; border-radius: 8px; padding: 11px 14px; font-size: 13.5px; }
+  .disclaimer { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 16px; }
+  .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid #fff6; border-top-color: #fff; border-radius: 50%; animation: s .8s linear infinite; vertical-align: -2px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/logo.jpg" alt="">
+  <h1>AIB Brokerage Analyst</h1>
+  <div class="stats" id="stats"></div>
+</header>
+
+<nav role="tablist">
+  <button role="tab" data-panel="pipeline" aria-selected="true">Pipeline</button>
+  <button role="tab" data-panel="clients" aria-selected="false">Clients</button>
+  <button role="tab" data-panel="sweep" aria-selected="false">Book sweep</button>
+  <button role="tab" data-panel="ask" aria-selected="false">Ask</button>
+</nav>
+
+<main>
+  <!-- ------------------------------------------------------------ pipeline -->
+  <section class="panel active" id="panel-pipeline">
+    <div class="toolbar">
+      <select id="f-family">
+        <option value="">All families</option>
+        <option value="general">General insurance</option>
+        <option value="benefits">Employee benefits</option>
+        <option value="service">Cardea services</option>
+        <option value="personal">Personal lines</option>
+      </select>
+      <select id="f-kind">
+        <option value="">All finding types</option>
+        <option value="gap">Coverage gap</option>
+        <option value="adequacy">Adequacy</option>
+        <option value="signal">Claims signal</option>
+        <option value="lifecycle">Lifecycle</option>
+        <option value="portfolio">Portfolio</option>
+      </select>
+      <select id="f-renewal">
+        <option value="">Any renewal date</option>
+        <option value="30">Renewing within 30 days</option>
+        <option value="90">Renewing within 90 days</option>
+        <option value="180">Renewing within 180 days</option>
+      </select>
+      <label style="display:flex;gap:6px;align-items:center;font-size:14px">
+        <input type="checkbox" id="f-cardea"> Cardea only
+      </label>
+      <span id="pipeline-count" style="color:var(--muted);font-size:13px"></span>
+    </div>
+    <div class="card" id="pipeline-list"><div class="empty">Loading…</div></div>
+  </section>
+
+  <!-- ------------------------------------------------------------- clients -->
+  <section class="panel" id="panel-clients">
+    <div class="grid">
+      <div class="card">
+        <div class="pad" style="border-bottom:1px solid var(--line)">
+          <input type="search" id="client-search" placeholder="Search clients" style="width:100%">
+        </div>
+        <div class="list" id="client-list"></div>
+      </div>
+      <div id="client-detail"><div class="card empty">Select a client.</div></div>
+    </div>
+  </section>
+
+  <!-- --------------------------------------------------------------- sweep -->
+  <section class="panel" id="panel-sweep">
+    <div class="toolbar">
+      <button class="btn" id="run-sweep">Run book sweep</button>
+      <span style="color:var(--muted);font-size:13px">
+        The analyst reads across the whole book and reports where to spend the next fortnight. Takes a minute or so.
+      </span>
+    </div>
+    <div id="sweep-out"></div>
+  </section>
+
+  <!-- ----------------------------------------------------------------- ask -->
+  <section class="panel" id="panel-ask">
+    <div class="toolbar">
+      <input type="text" id="ask-input" placeholder="e.g. which clients are most exposed to flooding, and what are we doing about it?" style="flex:1;min-width:280px">
+      <button class="btn" id="run-ask">Ask</button>
+    </div>
+    <div id="ask-out"></div>
+  </section>
+</main>
+
+<script type="module">
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs = {}, ...kids) => {
+  const node = Object.assign(document.createElement(tag), attrs);
+  for (const kid of kids.flat()) if (kid != null) node.append(kid);
+  return node;
+};
+const ttd = (n) => 'TT$' + Math.round(n ?? 0).toLocaleString('en-US');
+const get = (url) => fetch(url).then((r) => r.json());
+
+let analystAvailable = false;
+
+// ------------------------------------------------------------------- chrome
+
+for (const tab of document.querySelectorAll('nav button')) {
+  tab.onclick = () => {
+    for (const t of document.querySelectorAll('nav button')) t.setAttribute('aria-selected', String(t === tab));
+    for (const p of document.querySelectorAll('.panel')) p.classList.toggle('active', p.id === `panel-${tab.dataset.panel}`);
+  };
+}
+
+get('/api/summary').then((s) => {
+  analystAvailable = s.analystAvailable;
+  $('#stats').append(
+    el('div', {}, 'Clients', el('b', { textContent: s.clients })),
+    el('div', {}, 'Policies', el('b', { textContent: s.activePolicies })),
+    el('div', {}, 'Opportunities', el('b', { textContent: s.opportunityPipeline.opportunities })),
+    el('div', {}, 'Indicative revenue', el('b', { textContent: ttd(s.opportunityPipeline.estRevenueTTD) })),
+    el('div', {}, 'Renewing ≤90d', el('b', { textContent: s.renewalBuckets.within30 + s.renewalBuckets.within90 })),
+  );
+  if (!analystAvailable) {
+    $('main').prepend(el('div', {
+      className: 'notice',
+      style: 'margin-bottom:18px',
+      textContent: 'ANTHROPIC_API_KEY is not set, so the analyst is unavailable. The rules engine below works without it.',
+    }));
+  }
+});
+
+// ----------------------------------------------------------------- pipeline
+
+function renderOpportunity(opp, { showClient = true } = {}) {
+  const soon = opp.urgencyDays >= 0 && opp.urgencyDays <= 90;
+  return el('div', { className: 'opp' },
+    el('div', { className: 'top' },
+      el('span', { className: 'rank', textContent: `${opp.rank}.` }),
+      showClient ? el('span', { className: 'client', textContent: opp.clientName }) : null,
+      el('span', { className: 'tag', textContent: opp.kind }),
+      opp.cardea ? el('span', { className: 'tag cardea', textContent: 'Cardea' }) : null,
+      soon ? el('span', { className: 'tag soon', textContent: `${opp.urgencyDays}d to renewal` }) : null,
+    ),
+    el('div', { className: 'headline' },
+      el('strong', { textContent: opp.lineName ?? opp.line }), ' — ', opp.headline),
+    el('div', { className: 'facts' },
+      el('span', { textContent: `score ${opp.score.toFixed(2)}` }),
+      el('span', { textContent: `premium ${ttd(opp.estPremiumTTD)} indicative` }),
+      el('span', { textContent: `revenue ${ttd(opp.estRevenueTTD)}` }),
+      el('span', { textContent: `confidence ${(opp.confidence * 100).toFixed(0)}%` }),
+    ),
+    el('div', { className: 'rationale', textContent: opp.rationale }),
+    el('div', { className: 'evidence' }, 'Evidence: ',
+      ...opp.evidence.map((e, i) => el('span', {}, i ? ' · ' : '', el('code', { textContent: e.ref }), ` ${e.detail}`)),
+    ),
+  );
+}
+
+async function loadPipeline() {
+  const params = new URLSearchParams();
+  if ($('#f-family').value) params.set('family', $('#f-family').value);
+  if ($('#f-kind').value) params.set('kind', $('#f-kind').value);
+  if ($('#f-renewal').value) params.set('renewalWithinDays', $('#f-renewal').value);
+  if ($('#f-cardea').checked) params.set('cardeaOnly', 'true');
+  params.set('limit', '60');
+
+  const data = await get('/api/opportunities?' + params);
+  $('#pipeline-count').textContent =
+    `${data.total} findings · ${ttd(data.summary.estRevenueTTD)} indicative revenue`;
+
+  const list = $('#pipeline-list');
+  list.replaceChildren();
+  if (!data.opportunities.length) {
+    list.append(el('div', { className: 'empty', textContent: 'Nothing matches those filters.' }));
+    return;
+  }
+  for (const opp of data.opportunities) list.append(renderOpportunity(opp));
+}
+
+for (const id of ['#f-family', '#f-kind', '#f-renewal', '#f-cardea']) $(id).onchange = loadPipeline;
+loadPipeline();
+
+// ------------------------------------------------------------------ clients
+
+let clients = [];
+async function loadClients() {
+  const data = await get('/api/clients?limit=500');
+  clients = data.clients;
+  renderClientList();
+}
+
+function renderClientList() {
+  const q = $('#client-search').value.trim().toLowerCase();
+  const list = $('#client-list');
+  list.replaceChildren();
+  for (const client of clients.filter((c) => !q || `${c.name} ${c.id} ${c.industry}`.toLowerCase().includes(q))) {
+    const row = el('div', { className: 'list-row', tabIndex: 0 },
+      el('div', { className: 'name', textContent: client.name }),
+      el('div', { className: 'meta', textContent:
+        `${client.industry} · ${client.headcount || '—'} staff · ${client.linesHeld.length} lines · ${ttd(client.annualPremiumTTD)}` }),
+    );
+    row.onclick = () => {
+      for (const r of list.children) r.removeAttribute('aria-current');
+      row.setAttribute('aria-current', 'true');
+      openClient(client.id);
+    };
+    list.append(row);
+  }
+}
+$('#client-search').oninput = renderClientList;
+loadClients();
+
+async function openClient(clientId) {
+  const target = $('#client-detail');
+  target.replaceChildren(el('div', { className: 'card empty', textContent: 'Loading…' }));
+  const data = await get(`/api/client/${encodeURIComponent(clientId)}`);
+
+  const policyRows = data.policies.map((p) => el('tr', {},
+    el('td', {}, el('code', { textContent: p.id })),
+    el('td', { textContent: p.lineName }),
+    el('td', { textContent: p.carrier + (p.administrator && p.administrator !== 'carrier' ? ` (admin: ${p.administrator})` : '') }),
+    el('td', { className: 'num', textContent: (p.currency === 'USD' ? 'US$' : 'TT$') + Math.round(p.annualPremium ?? 0).toLocaleString('en-US') }),
+    el('td', { textContent: p.renewalDate + (p.renewsInDays != null && p.renewsInDays <= 90 ? ` (${p.renewsInDays}d)` : '') }),
+    el('td', { textContent: (p.extensions ?? []).join(', ') || '—' }),
+  ));
+
+  const claimRows = Object.entries(data.claims.byCategory)
+    .sort((a, b) => b[1].paidTTD - a[1].paidTTD)
+    .map(([category, b]) => el('tr', {},
+      el('td', { textContent: category }),
+      el('td', { className: 'num', textContent: b.count }),
+      el('td', { className: 'num', textContent: ttd(b.paidTTD) }),
+      el('td', { className: 'num', textContent: b.declinedCount || '—' }),
+      el('td', { textContent: Object.keys(b.declineReasons ?? {})[0] ?? '—' }),
+    ));
+
+  const briefBtn = el('button', { className: 'btn', textContent: 'Prepare analyst brief', disabled: !analystAvailable });
+  const briefOut = el('div');
+  briefBtn.onclick = () => {
+    briefBtn.disabled = true;
+    briefBtn.replaceChildren(el('span', { className: 'spin' }), ' Working…');
+    streamAgent(`/api/brief/stream?clientId=${encodeURIComponent(clientId)}`, briefOut, renderBrief)
+      .finally(() => { briefBtn.disabled = false; briefBtn.textContent = 'Prepare analyst brief'; });
+  };
+
+  target.replaceChildren(el('div', { className: 'stack' },
+    el('div', { className: 'card pad' },
+      el('h2', { textContent: data.client.name }),
+      el('div', { style: 'color:var(--muted);margin-top:4px' , textContent:
+        `${data.client.id} · ${data.client.industry} · ${data.client.segment} · ${data.client.headcount || 0} staff · ` +
+        `AE ${data.client.accountExecutive ?? '—'} · ${ttd(data.client.annualPremiumTTD)} premium` }),
+      data.client.floodZone ? el('div', { style: 'margin-top:8px' }, el('span', { className: 'tag soon', textContent: 'Flood-prone location' })) : null,
+      el('div', { style: 'margin-top:14px' }, briefBtn),
+    ),
+    briefOut,
+    el('div', { className: 'card pad' },
+      el('h3', { className: 'section-title', textContent: `Opportunities (${data.opportunities.length})` }),
+      data.opportunities.length
+        ? el('div', {}, ...data.opportunities.map((o) => renderOpportunity(o, { showClient: false })))
+        : el('div', { className: 'empty', textContent: 'No findings for this client.' }),
+    ),
+    el('div', { className: 'card pad' },
+      el('h3', { className: 'section-title', textContent: 'Policies' }),
+      el('table', {},
+        el('thead', {}, el('tr', {},
+          el('th', { textContent: 'Policy' }), el('th', { textContent: 'Line' }), el('th', { textContent: 'Carrier' }),
+          el('th', { className: 'num', textContent: 'Premium' }), el('th', { textContent: 'Renews' }), el('th', { textContent: 'Extensions' }))),
+        el('tbody', {}, ...policyRows),
+      ),
+    ),
+    claimRows.length ? el('div', { className: 'card pad' },
+      el('h3', { className: 'section-title', textContent: `Claims, last ${data.claims.windowDays} days` }),
+      el('table', {},
+        el('thead', {}, el('tr', {},
+          el('th', { textContent: 'Category' }), el('th', { className: 'num', textContent: 'Claims' }),
+          el('th', { className: 'num', textContent: 'Paid' }), el('th', { className: 'num', textContent: 'Declined' }),
+          el('th', { textContent: 'Leading decline reason' }))),
+        el('tbody', {}, ...claimRows),
+      ),
+    ) : null,
+  ));
+}
+
+// ------------------------------------------------------------------- agent
+
+/** Consume an SSE run, showing tool activity as it happens. */
+function streamAgent(url, target, render) {
+  return new Promise((resolve) => {
+    const log = el('div', { className: 'log' });
+    const line = (text, cls = '') => log.append(el('div', { className: cls, textContent: text }), '');
+    target.replaceChildren(el('div', { className: 'card pad stack' },
+      el('h3', { className: 'section-title', textContent: 'Analyst activity' }), log));
+
+    const source = new EventSource(url);
+    const done = (node) => { source.close(); if (node) target.replaceChildren(node); resolve(); };
+
+    source.addEventListener('phase', (e) => {
+      const { phase } = JSON.parse(e.data);
+      line(phase === 'explore' ? '› reading the book' : phase === 'synthesise' ? '› writing it up' : '› starting', 't');
+    });
+    source.addEventListener('tool', (e) => {
+      const { name, input } = JSON.parse(e.data);
+      const detail = input?.clientId ?? input?.query ?? input?.industry ?? input?.family ?? '';
+      line(`  · ${name}${detail ? ' ' + detail : ''}`);
+      log.scrollTop = log.scrollHeight;
+    });
+    source.addEventListener('notice', (e) => line('  ! ' + JSON.parse(e.data).message, 't'));
+    source.addEventListener('error', (e) => {
+      const message = e.data ? JSON.parse(e.data).message : 'The connection dropped.';
+      done(el('div', { className: 'card pad' }, el('div', { className: 'notice', textContent: message })));
+    });
+    source.addEventListener('result', (e) => done(render(JSON.parse(e.data))));
+  });
+}
+
+const strengthSpan = (s) => el('span', { className: s, textContent: s });
+
+function renderBrief(brief) {
+  return el('div', { className: 'card pad stack' },
+    el('h3', { style: 'font-size:17px', textContent: brief.headline }),
+    el('p', { style: 'margin:0;color:#33383f', textContent: brief.situation }),
+    ...brief.recommendations.map((rec) => el('div', { style: 'border-top:1px solid var(--line);padding-top:14px' },
+      el('div', { style: 'font-weight:640' }, `${rec.rank}. ${rec.title}`),
+      el('div', { className: 'facts', style: 'color:var(--muted);font-size:12.5px;margin:5px 0 8px;display:flex;gap:16px;flex-wrap:wrap' },
+        el('span', {}, 'evidence ', strengthSpan(rec.evidenceStrength)),
+        el('span', { textContent: `${ttd(rec.estPremiumTTD)} indicative` }),
+        el('span', { textContent: rec.line }),
+      ),
+      el('p', { style: 'margin:0 0 8px', textContent: rec.rationale }),
+      el('p', { style: 'margin:0 0 8px;font-size:14px' }, el('strong', { textContent: 'Why now: ' }), rec.whyNow),
+      el('p', { style: 'margin:0 0 8px;font-size:14px' }, el('strong', { textContent: 'Talk track: ' }), rec.talkTrack),
+      rec.toConfirm?.length
+        ? el('p', { style: 'margin:0 0 8px;font-size:14px' }, el('strong', { textContent: 'Confirm first: ' }), rec.toConfirm.join('; '))
+        : null,
+      el('p', { style: 'margin:0 0 8px;font-size:14px' },
+        el('strong', { textContent: 'Likely objection: ' }), rec.likelyObjection, ' ', el('em', { textContent: rec.objectionResponse })),
+      el('div', { className: 'evidence', style: 'font-size:12.5px;color:var(--muted)' },
+        'Evidence: ', ...rec.evidenceRefs.map((r, i) => el('span', {}, i ? ' · ' : '', el('code', { textContent: r })))),
+    )),
+    brief.setAside?.length ? el('div', { style: 'border-top:1px solid var(--line);padding-top:14px' },
+      el('h3', { className: 'section-title', textContent: 'Set aside' }),
+      el('ul', { style: 'margin:0;padding-left:20px;color:var(--muted);font-size:14px' },
+        ...brief.setAside.map((s) => el('li', { textContent: `${s.line} — ${s.reason}` }))),
+    ) : null,
+    brief.openQuestions?.length ? el('div', {},
+      el('h3', { className: 'section-title', textContent: 'Open questions' }),
+      el('ul', { style: 'margin:0;padding-left:20px;font-size:14px' },
+        ...brief.openQuestions.map((q) => el('li', { textContent: q }))),
+    ) : null,
+    el('div', { className: 'disclaimer', textContent: brief.disclaimer }),
+  );
+}
+
+function renderSweep(sweep) {
+  return el('div', { className: 'card pad stack' },
+    el('h3', { style: 'font-size:17px', textContent: sweep.headline }),
+    ...sweep.recommendations.map((rec) => el('div', { style: 'border-top:1px solid var(--line);padding-top:14px' },
+      el('div', { style: 'font-weight:640' }, `${rec.rank}. ${rec.clientName} `, el('code', { textContent: rec.clientId })),
+      el('div', { style: 'margin:4px 0 6px' , textContent: rec.title }),
+      el('div', { style: 'color:var(--muted);font-size:12.5px;display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px' },
+        el('span', {}, 'evidence ', strengthSpan(rec.evidenceStrength)),
+        el('span', { textContent: `${ttd(rec.estPremiumTTD)} indicative` }),
+        el('span', { textContent: rec.line }),
+      ),
+      el('p', { style: 'margin:0 0 8px', textContent: rec.rationale }),
+      el('p', { style: 'margin:0 0 8px;font-size:14px' }, el('strong', { textContent: 'Why now: ' }), rec.whyNow),
+      el('p', { style: 'margin:0 0 8px;font-size:14px' }, el('strong', { textContent: 'Next step: ' }), rec.nextStep),
+      el('div', { style: 'font-size:12.5px;color:var(--muted)' },
+        'Evidence: ', ...rec.evidenceRefs.map((r, i) => el('span', {}, i ? ' · ' : '', el('code', { textContent: r })))),
+    )),
+    sweep.patterns?.length ? el('div', { style: 'border-top:1px solid var(--line);padding-top:14px' },
+      el('h3', { className: 'section-title', textContent: 'Patterns worth running as a campaign' }),
+      ...sweep.patterns.map((p) => el('div', { style: 'margin-bottom:12px' },
+        el('div', { style: 'font-weight:600', textContent: p.pattern }),
+        el('div', { style: 'font-size:14px', textContent: p.suggestedApproach }),
+        el('div', { style: 'font-size:12.5px;color:var(--muted)', textContent: `${p.affectedClientIds.length} clients: ${p.affectedClientIds.join(', ')}` }),
+      )),
+    ) : null,
+    sweep.caveats?.length ? el('div', {},
+      el('h3', { className: 'section-title', textContent: 'Caveats' }),
+      el('ul', { style: 'margin:0;padding-left:20px;font-size:14px' }, ...sweep.caveats.map((q) => el('li', { textContent: q }))),
+    ) : null,
+    el('div', { className: 'disclaimer', textContent: sweep.disclaimer }),
+  );
+}
+
+$('#run-sweep').onclick = () => {
+  const btn = $('#run-sweep');
+  btn.disabled = true;
+  btn.replaceChildren(el('span', { className: 'spin' }), ' Working…');
+  streamAgent('/api/sweep/stream?limit=8', $('#sweep-out'), renderSweep)
+    .finally(() => { btn.disabled = false; btn.textContent = 'Run book sweep'; });
+};
+
+$('#run-ask').onclick = () => {
+  const question = $('#ask-input').value.trim();
+  if (!question) return;
+  const btn = $('#run-ask');
+  btn.disabled = true;
+  streamAgent(`/api/ask/stream?question=${encodeURIComponent(question)}`, $('#ask-out'), (result) =>
+    el('div', { className: 'card pad' },
+      el('div', { style: 'white-space:pre-wrap', textContent: result.answer }),
+      el('div', { className: 'disclaimer', textContent: 'Internal preparation material. Estimates are indicative, not quotes.' })),
+  ).finally(() => { btn.disabled = false; });
+};
+$('#ask-input').onkeydown = (e) => { if (e.key === 'Enter') $('#run-ask').click(); };
+</script>
+</body>
+</html>

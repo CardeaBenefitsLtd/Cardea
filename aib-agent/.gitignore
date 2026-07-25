@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Never commit a real book of business. Anchored to the project root so it does
+# not swallow src/data/, which holds the schema and the synthetic fixture.
+/data/
+*.book.json
+clients.csv
+policies.csv
+members.csv
+claims.csv
