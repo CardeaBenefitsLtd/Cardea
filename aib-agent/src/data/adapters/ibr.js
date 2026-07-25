@@ -265,9 +265,19 @@ export function buildBook(rows, opts = {}) {
     registerLine({ code: policy.lineCode, profitCentre: policy.profitCentre, department: policy.department });
   }
 
+  // Where the export stops. Anything expiring near or after this cannot be
+  // judged as lapsed, because the renewal transaction would simply not be in
+  // the file yet. Without this a stale export reports healthy renewals as
+  // churn — the single most misleading thing a retention rule can do.
+  const dataAsOf = transactions
+    .map((t) => t.date)
+    .filter(Boolean)
+    .reduce((max, d) => (max && max > d ? max : d), undefined);
+
   return {
     meta: {
       source: 'ibr-register',
+      dataAsOf,
       rowsRead: rows.length,
       reversedRowsExcluded: reversedRows,
       nonPremiumRowsExcluded: nonPremiumRows,

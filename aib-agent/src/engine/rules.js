@@ -19,7 +19,7 @@ import {
   clientPremiumTTD, claimsSummary,
 } from '../data/book.js';
 import { CATALOGUE, estimatePremiumTTD, estimateRevenueTTD, livesFor, impliedSumInsured } from './catalogue.js';
-import { toTTD } from '../data/schema.js';
+import { toTTD, isIsoDate } from '../data/schema.js';
 import { TPA_NAME, TPA_RELATIONSHIP, GROUP_NAME } from '../config.js';
 
 /**
@@ -77,6 +77,22 @@ export const DEPARTMENT_WHITESPACE_FLOOR_TTD = Number(process.env.AIB_WHITESPACE
  * The cap keeps one account from dominating the pipeline on an assumption.
  */
 export const WHITESPACE_ESTIMATE_CAP_TTD = Number(process.env.AIB_WHITESPACE_CAP_TTD ?? 2500000);
+
+/** How far ahead a renewal counts as workable. */
+export const RENEWAL_WINDOW_DAYS = Number(process.env.AIB_RENEWAL_WINDOW_DAYS ?? 90);
+
+/** Minimum premium for a renewal or churn finding to be worth surfacing. */
+export const RENEWAL_FLOOR_TTD = Number(process.env.AIB_RENEWAL_FLOOR_TTD ?? 25000);
+
+/**
+ * How long after expiry a missing renewal is treated as a real lapse rather
+ * than a transaction the export has not caught up with. Renewals are commonly
+ * booked weeks late, so judging too close to the cutoff manufactures churn.
+ */
+export const LAPSE_GRACE_DAYS = Number(process.env.AIB_LAPSE_GRACE_DAYS ?? 60);
+
+/** Proportional fall in renewal premium that counts as material. */
+export const PREMIUM_DROP_THRESHOLD = Number(process.env.AIB_PREMIUM_DROP_THRESHOLD ?? 0.25);
 
 /** Sums insured older than this are treated as having drifted out of date. */
 const SUM_INSURED_STALE_YEARS = 3;
@@ -777,6 +793,134 @@ export const RULES = [
   },
 
 
+  // -------------------------------------------------------- renewal & churn
+  {
+    id: 'renewal_due',
+    title: 'Renewal inside the working window',
+    requires: ['renewalDate', 'premium'],
+    kind: 'lifecycle',
+    run(client, ctx) {
+      const premium = clientPremiumTTD(ctx.ix, client.id);
+      if (premium < RENEWAL_FLOOR_TTD) return [];
+
+      const due = policiesFor(ctx.ix, client.id)
+        .filter((p) => isIsoDate(p.renewalDate))
+        .map((p) => ({ policy: p, days: daysUntil(p.renewalDate, ctx.now) }))
+        .filter(({ days }) => days >= 0 && days <= RENEWAL_WINDOW_DAYS)
+        .sort((a, b) => a.days - b.days);
+      if (!due.length) return [];
+
+      const atRisk = due.reduce((sum, { policy }) => sum + toTTD(policy.annualPremium ?? 0, policy.currency), 0);
+      const soonest = due[0];
+
+      return [make(client, ctx, {
+        ruleId: this.id, ruleTitle: this.title, kind: this.kind,
+        line: soonest.policy.line,
+        headline: `${due.length} ${due.length === 1 ? 'policy renews' : 'policies renew'} within ${RENEWAL_WINDOW_DAYS} days — ${money(atRisk)} of premium`,
+        rationale:
+          `${money(atRisk)} of this client's premium comes up for renewal in the next ${RENEWAL_WINDOW_DAYS} days, the ` +
+          `soonest in ${soonest.days} days (${soonest.policy.displayNumber ?? soonest.policy.id}, ` +
+          `${soonest.policy.profitCentre || soonest.policy.line}). Renewal is the one moment in the year when a client ` +
+          `expects to talk about cover, so it is both the point of greatest churn risk and the only natural opening for ` +
+          `everything else on this account. Whatever else is worth raising here should be raised now rather than ` +
+          `separately.`,
+        evidence: due.slice(0, 5).map(({ policy, days }) => ({
+          kind: 'policy', ref: policy.displayNumber ?? policy.id,
+          detail: `${policy.lineCode ?? policy.line} in ${policy.profitCentre || 'unknown centre'}, ` +
+            `${money(toTTD(policy.annualPremium ?? 0, policy.currency))}, renews ${policy.renewalDate} (${days} days)`,
+        })),
+        estPremiumTTD: atRisk,
+        confidence: 0.9,
+        effort: 'low',
+      })];
+    },
+  },
+
+  {
+    id: 'expired_not_renewed',
+    title: 'Policy expired with no renewal recorded',
+    requires: ['renewalDate', 'premium'],
+    kind: 'lifecycle',
+    run(client, ctx) {
+      // Only judge policies that expired far enough before the export cutoff
+      // that a renewal would have been written by now. Anything nearer the
+      // cutoff is unknowable, not lapsed.
+      const cutoff = ctx.dataAsOf;
+      if (!cutoff) return [];
+      const judgeBefore = new Date(Date.parse(cutoff) - LAPSE_GRACE_DAYS * 86400000)
+        .toISOString().slice(0, 10);
+
+      const lapsed = (ctx.ix.policiesByClient.get(client.id) ?? []).filter((p) => {
+        if (!isIsoDate(p.renewalDate)) return false;
+        if (p.status === 'cancelled') return false;
+        return p.renewalDate < judgeBefore;
+      });
+      if (!lapsed.length) return [];
+
+      const value = lapsed.reduce((sum, p) => sum + toTTD(p.annualPremium ?? 0, p.currency), 0);
+      if (value < RENEWAL_FLOOR_TTD) return [];
+
+      return [make(client, ctx, {
+        ruleId: this.id, ruleTitle: this.title, kind: this.kind,
+        line: lapsed[0].line,
+        headline: `${money(value)} of premium expired with no renewal on file`,
+        rationale:
+          `${lapsed.length} ${lapsed.length === 1 ? 'policy' : 'policies'} worth ${money(value)} expired before ` +
+          `${judgeBefore} and no renewal transaction follows in the register, which runs to ${cutoff}. Either the ` +
+          `business was lost, or it renewed somewhere the register does not show. Both are worth knowing and only one ` +
+          `of them is recoverable. Check against the current system before treating this as churn — the export is a ` +
+          `snapshot, and a renewal booked after the cutoff would look identical to a lapse.`,
+        evidence: lapsed.slice(0, 5).map((p) => ({
+          kind: 'policy', ref: p.displayNumber ?? p.id,
+          detail: `${p.lineCode ?? p.line}, ${money(toTTD(p.annualPremium ?? 0, p.currency))}, expired ${p.renewalDate}, no later term`,
+        })),
+        estPremiumTTD: value,
+        confidence: 0.5,
+        effort: 'low',
+      })];
+    },
+  },
+
+  {
+    id: 'renewal_premium_fell',
+    title: 'Renewal came back materially smaller',
+    requires: ['priorTermPremium'],
+    kind: 'signal',
+    run(client, ctx) {
+      const shrunk = policiesFor(ctx.ix, client.id).filter((p) => {
+        if (!Number.isFinite(p.priorTermPremiumTTD) || p.priorTermPremiumTTD <= 0) return false;
+        const current = toTTD(p.annualPremium ?? 0, p.currency);
+        return current < p.priorTermPremiumTTD * (1 - PREMIUM_DROP_THRESHOLD);
+      });
+      if (!shrunk.length) return [];
+
+      const lost = shrunk.reduce((sum, p) => sum + (p.priorTermPremiumTTD - toTTD(p.annualPremium ?? 0, p.currency)), 0);
+      if (lost < RENEWAL_FLOOR_TTD) return [];
+      const worst = shrunk.sort((a, b) =>
+        (b.priorTermPremiumTTD - toTTD(b.annualPremium ?? 0, b.currency)) -
+        (a.priorTermPremiumTTD - toTTD(a.annualPremium ?? 0, a.currency)))[0];
+
+      return [make(client, ctx, {
+        ruleId: this.id, ruleTitle: this.title, kind: this.kind,
+        line: worst.line,
+        headline: `Renewal premium down ${money(lost)} against the prior term`,
+        rationale:
+          `${shrunk.length} ${shrunk.length === 1 ? 'policy' : 'policies'} renewed at ${money(lost)} less than the term ` +
+          `before, the largest being ${worst.displayNumber ?? worst.id} at ` +
+          `${money(toTTD(worst.annualPremium ?? 0, worst.currency))} against ${money(worst.priorTermPremiumTTD)}. That is ` +
+          `either a genuine reduction in exposure, a rate correction, or cover quietly coming off the schedule. The ` +
+          `third is the one worth catching, and the register cannot tell the three apart — the client can.`,
+        evidence: shrunk.slice(0, 4).map((p) => ({
+          kind: 'policy', ref: p.displayNumber ?? p.id,
+          detail: `${p.lineCode ?? p.line}: ${money(p.priorTermPremiumTTD)} -> ${money(toTTD(p.annualPremium ?? 0, p.currency))}`,
+        })),
+        estPremiumTTD: lost,
+        confidence: 0.6,
+        effort: 'low',
+      })];
+    },
+  },
+
   // ------------------------------------------------- register-native rules
   //
   // These read what a transaction register actually carries — which department
@@ -1056,10 +1200,12 @@ export function dormantRules() {
  * Run every rule across every client (or a subset) and return deduplicated
  * opportunities.
  *
- * Where two rules land on the same client and line — a specific gap rule and
- * the peer-benchmark rule usually — the more confident one wins and the other
- * is folded in as corroboration. Presenting both as separate findings would
- * inflate the pipeline with the same recommendation counted twice.
+ * Where two rules land on the same client, line and kind — a specific gap rule
+ * and the peer-benchmark rule usually — the more confident one wins and the
+ * other is folded in as corroboration. Presenting both as separate findings
+ * would inflate the pipeline with the same recommendation counted twice.
+ * Findings of different kinds are kept apart: a lapsed policy and a round-out
+ * opportunity are not the same conversation.
  *
  * @param {import('../data/book.js').BookIndex} ix
  * @param {{clientIds?: string[], now?: Date, benchmarks?: Map<string, any>, ruleIds?: string[]}} [opts]
@@ -1069,7 +1215,7 @@ export function findOpportunities(ix, opts = {}) {
   const now = opts.now ?? new Date();
   const benchmarks = opts.benchmarks ?? new Map();
   const capabilities = opts.capabilities ?? ix.book.capabilities ?? null;
-  const ctx = { ix, now, benchmarks, capabilities };
+  const ctx = { ix, now, benchmarks, capabilities, dataAsOf: ix.book.meta?.dataAsOf ?? null };
 
   const clients = opts.clientIds
     ? opts.clientIds.map((id) => ix.clientsById.get(id)).filter(Boolean)
@@ -1105,7 +1251,12 @@ export function findOpportunities(ix, opts = {}) {
       }
 
       for (const opp of produced) {
-        const key = `${opp.clientId}:${opp.line}`;
+        // Keyed by kind as well as line. Two rules can land on the same client
+        // and line while saying entirely different things — "they have no
+        // benefits business", "they hold only one policy" and "that policy
+        // lapsed" are three recommendations, not one, and collapsing them
+        // buries the urgent one as a footnote on the vague one.
+        const key = `${opp.clientId}:${opp.line}:${opp.kind}`;
         const existing = byClientLine.get(key);
         if (!existing) {
           byClientLine.set(key, opp);

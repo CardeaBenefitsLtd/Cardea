@@ -356,12 +356,27 @@ describe('rules', () => {
     }
   });
 
-  test('two rules landing on the same client and line collapse to one finding', () => {
+  test('two rules of the same kind on one client and line collapse to one finding', () => {
     const book = SAMPLE_BOOK;
     const { ix, benchmarks } = contextFor(book);
     const opps = findOpportunities(ix, { now: NOW, benchmarks });
-    const keys = opps.map((o) => `${o.clientId}:${o.line}`);
-    assert.equal(new Set(keys).size, keys.length, 'duplicate client/line pairs leaked through');
+    const keys = opps.map((o) => `${o.clientId}:${o.line}:${o.kind}`);
+    assert.equal(new Set(keys).size, keys.length, 'duplicate client/line/kind triples leaked through');
+  });
+
+  test('findings of different kinds on one line are kept apart', () => {
+    // A lapsed policy and a round-out opportunity can share a client and a
+    // line while being entirely different conversations.
+    const book = SAMPLE_BOOK;
+    const { ix, benchmarks } = contextFor(book);
+    const opps = findOpportunities(ix, { now: NOW, benchmarks });
+    const byClientLine = new Map();
+    for (const o of opps) {
+      const k = `${o.clientId}:${o.line}`;
+      byClientLine.set(k, (byClientLine.get(k) ?? new Set()).add(o.kind));
+    }
+    assert.ok([...byClientLine.values()].some((kinds) => kinds.size > 1),
+      'the sample book should contain at least one line carrying two kinds of finding');
   });
 });
 

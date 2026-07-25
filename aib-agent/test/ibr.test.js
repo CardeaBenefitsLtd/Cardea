@@ -133,6 +133,69 @@ describe('IBR adapter', () => {
   });
 });
 
+describe('a stale export does not manufacture churn', () => {
+  /** A policy that expired shortly before the export cutoff, with no renewal recorded. */
+  const rowsNearCutoff = [
+    row({ 'Billed From': 'NEARCUT-01', 'Account Name': 'Near Cutoff Ltd', 'Policy Number': 'NC-1',
+      'Policy/Line': 'ARPR', 'Profit Centre Name': 'Property', 'Department Name': 'Corporate',
+      'Policy Effective Date': '2025-06-01 00:00:00', 'Policy Expiration Date': '2026-06-01 00:00:00',
+      'Gross Premium TTD': '500,000', 'Total Brokerage': '39,000', 'Trans Code': 'RENB',
+      'Trans Date Entered': '2025-06-02 00:00:00' }),
+    // The export stops here.
+    row({ 'Billed From': 'OTHER-01', 'Account Name': 'Other Ltd', 'Policy Number': 'OT-1',
+      'Policy/Line': 'MVPR', 'Profit Centre Name': 'Motor Vehicle', 'Department Name': 'Personal Lines',
+      'Policy Effective Date': '2026-01-01 00:00:00', 'Policy Expiration Date': '2027-01-01 00:00:00',
+      'Gross Premium TTD': '9,000', 'Trans Code': 'RENB', 'Trans Date Entered': '2026-06-16 00:00:00' }),
+  ];
+
+  test('the adapter records where the export stops', () => {
+    const book = buildBook(rowsNearCutoff);
+    assert.equal(book.meta.dataAsOf, '2026-06-16');
+  });
+
+  test('a policy expiring near the cutoff is not called lapsed', () => {
+    // NC-1 expired 2026-06-01, only 15 days before the export ends. A renewal
+    // booked on time would simply not be in the file, so calling this churn
+    // would be wrong — and wrong in the direction that starts awkward client
+    // conversations.
+    const book = buildBook(rowsNearCutoff);
+    const ix = indexBook(book);
+    const found = findOpportunities(ix, {
+      now: new Date('2026-07-25'), benchmarks: new Map(), capabilities: bookCapabilities(book),
+    }).filter((o) => o.ruleId === 'expired_not_renewed');
+    assert.equal(found.length, 0, 'a near-cutoff expiry is unknowable, not lapsed');
+  });
+
+  test('a policy that expired well before the cutoff is still caught', () => {
+    const old = [
+      row({ 'Billed From': 'LAPSED-01', 'Account Name': 'Lapsed Ltd', 'Policy Number': 'LP-1',
+        'Policy/Line': 'ARPR', 'Profit Centre Name': 'Property', 'Department Name': 'Corporate',
+        'Policy Effective Date': '2024-01-01 00:00:00', 'Policy Expiration Date': '2025-01-01 00:00:00',
+        'Gross Premium TTD': '400,000', 'Total Brokerage': '31,200', 'Trans Code': 'RENB',
+        'Trans Date Entered': '2024-01-02 00:00:00' }),
+      ...rowsNearCutoff,
+    ];
+    const book = buildBook(old);
+    const ix = indexBook(book);
+    const found = findOpportunities(ix, {
+      now: new Date('2026-07-25'), benchmarks: new Map(), capabilities: bookCapabilities(book),
+    }).filter((o) => o.ruleId === 'expired_not_renewed');
+    assert.equal(found.length, 1);
+    assert.equal(found[0].clientId, 'LAPSED-01');
+    assert.match(found[0].rationale, /snapshot/, 'the finding should caveat itself');
+  });
+
+  test('with no cutoff recorded the churn rule declines to guess', () => {
+    const book = buildBook(rowsNearCutoff);
+    book.meta.dataAsOf = null;
+    const ix = indexBook(book);
+    const found = findOpportunities(ix, {
+      now: new Date('2026-07-25'), benchmarks: new Map(), capabilities: bookCapabilities(book),
+    }).filter((o) => o.ruleId === 'expired_not_renewed');
+    assert.equal(found.length, 0);
+  });
+});
+
 describe('capability gating', () => {
   const book = buildBook(registerRows());
   const capabilities = bookCapabilities(book);

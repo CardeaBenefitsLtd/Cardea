@@ -154,10 +154,22 @@ active**, producing 370 findings across 284 clients:
 | Rule | Findings |
 |---|---|
 | Corporate client with no benefits business | 136 |
+| Renewal inside the 90-day working window | 114 |
 | Health written outside the administrator | 75 |
 | Group health with no group life | 72 |
+| Expired with no renewal recorded | 63 |
 | Single-line client worth rounding out | 58 |
 | Benefits client with no general lines | 29 |
+
+### A stale export must not manufacture churn
+
+The adapter records where the export stops (`meta.dataAsOf`). A policy that
+expired shortly before that cutoff cannot be judged lapsed — a renewal booked on
+time simply would not be in the file yet. The churn rule therefore only judges
+policies that expired at least `AIB_LAPSE_GRACE_DAYS` (default 60) before the
+cutoff, declines to run at all if no cutoff is recorded, and caveats every
+finding it does produce. Renewal *dates* do not go stale; renewal *transactions*
+do, and that asymmetry is the whole problem.
 
 The other 23 are waiting on sums insured, policy extensions, claims and member census — none of
 which the register carries. `dormantRules()` names each one and what it is missing.
