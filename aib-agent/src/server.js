@@ -22,7 +22,7 @@ import { rankOpportunities, summarise } from './engine/score.js';
 import { CATALOGUE } from './engine/catalogue.js';
 import { runTool } from './agent/tools.js';
 import { createAnalyst } from './agent/analyst.js';
-import { TPA_NAME, TPA_RELATIONSHIP, relationshipNotice } from './config.js';
+import { TPA_NAME, TPA_RELATIONSHIP, GROUP_NAME, relationshipNotice } from './config.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = join(here, '..', 'web');
@@ -61,7 +61,7 @@ async function api(url, req, res) {
       return json(res, 200, {
         ...JSON.parse(runTool('get_book_summary', {}, { ix, benchmarks, now }).content),
         analystAvailable: hasCredentials,
-        tpa: { name: TPA_NAME, relationship: TPA_RELATIONSHIP },
+        tpa: { name: TPA_NAME, relationship: TPA_RELATIONSHIP, group: GROUP_NAME, notice: relationshipNotice() },
         validation: book.validation,
       });
     }

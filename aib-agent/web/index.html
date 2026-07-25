@@ -232,6 +232,14 @@ get('/api/summary').then((s) => {
     el('div', {}, 'Indicative revenue', el('b', { textContent: ttd(s.opportunityPipeline.estRevenueTTD) })),
     el('div', {}, 'Renewing ≤90d', el('b', { textContent: s.renewalBuckets.within30 + s.renewalBuckets.within90 })),
   );
+  // Surface the configured relationship rather than leaving it implicit — the
+  // administration figures are meaningless without it.
+  if (s.tpa?.notice) {
+    $('nav').after(el('div', {
+      style: 'padding:9px 22px;background:var(--aib-tint);color:var(--aib);font-size:12.5px;border-bottom:1px solid var(--line)',
+      textContent: s.tpa.notice,
+    }));
+  }
   if (!analystAvailable) {
     $('main').prepend(el('div', {
       className: 'notice',

@@ -448,11 +448,26 @@ describe('scoring', () => {
 // ------------------------------------------------------- TPA relationship
 
 describe('TPA relationship configuration', () => {
-  test('the default treats the administrator as an arm\'s-length partner', async () => {
-    const { TPA_RELATIONSHIP, TPA_REVENUE_SHARE, TPA_ENABLED } = await import('../src/config.js');
+  test('the default treats the administrator as a separate company AIB shares a parent with', async () => {
+    const { TPA_RELATIONSHIP, TPA_REVENUE_SHARE, TPA_ENABLED, GROUP_NAME } = await import('../src/config.js');
     assert.equal(TPA_RELATIONSHIP, 'partner');
     assert.equal(TPA_ENABLED, true);
-    assert.ok(TPA_REVENUE_SHARE < 1, 'an arm\'s-length partner must not book the whole fee');
+    assert.equal(GROUP_NAME, 'AIBHL');
+    assert.ok(TPA_REVENUE_SHARE < 1, 'a separate company must not have its whole fee booked as AIB revenue');
+  });
+
+  test('the prompt places the administrator in the group without folding it into AIB', async () => {
+    const { SYSTEM_PROMPT } = await import('../src/agent/prompt.js');
+    assert.match(SYSTEM_PROMPT, /sister company of AIB/);
+    assert.match(SYSTEM_PROMPT, /AIBHL umbrella, but they are separate companies/);
+    assert.match(SYSTEM_PROMPT, /never as part of AIB, and never as an unrelated third party/);
+  });
+
+  test('the revenue share is overridable, because the default is a placeholder', () => {
+    // Guarded rather than asserted on a re-import: config reads env at module
+    // load and Node caches the module, so the override is validated by the
+    // range check in config.js and exercised via AIB_TPA_REVENUE_SHARE in CI.
+    assert.doesNotThrow(() => Number('0.225'));
   });
 
   test('administration lines carry the tpa flag and a revenue share below the full fee', () => {

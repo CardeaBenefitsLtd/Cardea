@@ -110,12 +110,23 @@ administrator. Set `AIB_TPA_RELATIONSHIP` before trusting anything the system sa
 | Setting | Effect |
 |---|---|
 | `none` | Administration lines are removed from the catalogue and the rules that propose them never fire. |
-| `partner` *(default)* | Arm's-length referral or placement. AIB books a 15% share of the fee. The analyst describes it as a working relationship and is told not to imply more. |
-| `subsidiary` | The TPA is part of the AIB group, so the whole fee is AIB's and the claims data is in-house. |
+| `partner` *(default)* | A separate company. AIB books only its own share of the fee — `AIB_TPA_REVENUE_SHARE`, defaulting to a placeholder 15%. |
+| `subsidiary` | The TPA belongs to AIB itself, so the whole fee is AIB's. |
 
-The default is `partner` because it is the assumption that is wrong in the least damaging way — it
-neither invents a corporate relationship nor discards a real one. `AIB_TPA_NAME` renames the
-administrator throughout if it is not Cardea. See [`src/config.js`](src/config.js).
+Corporate structure is a **separate question** from that commercial setting, and `AIB_GROUP_NAME`
+answers it. As shipped, AIB and Cardea are configured as sister companies under the **AIBHL**
+umbrella: separate companies that invoice each other, which is why the relationship is `partner`
+rather than `subsidiary` — but still inside one group, which is an argument an account executive can
+legitimately make. With a group name set, the analyst is told to describe the administrator as a
+sister company within the group, *never as part of AIB and never as an unrelated third party*, and
+the administration rule adds the in-group point to its rationale. Set `AIB_GROUP_NAME=""` if there
+is no common parent.
+
+`AIB_TPA_NAME` renames the administrator throughout. See [`src/config.js`](src/config.js).
+
+**The 15% revenue share is a placeholder nobody at AIB supplied.** Set `AIB_TPA_REVENUE_SHARE` to
+the real inter-company figure before the pipeline totals are shown to anyone who might act on
+them.
 
 ---
 
@@ -181,6 +192,8 @@ Copy `.env.example` to `.env`.
 | `AIB_FX_TTD_PER_USD` | `6.8` | Normalises the USD international plan. |
 | `AIB_TPA_RELATIONSHIP` | `partner` | `none`, `partner` or `subsidiary`. Governs the administration lines — see above. |
 | `AIB_TPA_NAME` | `Cardea` | Name of the health administrator, and the value expected in `policies.administrator`. |
+| `AIB_GROUP_NAME` | `AIBHL` | Holding company AIB and the administrator share. Empty string if none. |
+| `AIB_TPA_REVENUE_SHARE` | `0.15` | AIB's share of an administration fee. **Placeholder — replace it.** |
 | `PORT` | `4000` | |
 
 ---

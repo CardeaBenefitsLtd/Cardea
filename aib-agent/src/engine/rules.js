@@ -19,7 +19,7 @@ import {
 } from '../data/book.js';
 import { CATALOGUE, estimatePremiumTTD, estimateRevenueTTD, livesFor, impliedSumInsured } from './catalogue.js';
 import { toTTD } from '../data/schema.js';
-import { TPA_NAME, TPA_RELATIONSHIP } from '../config.js';
+import { TPA_NAME, TPA_RELATIONSHIP, GROUP_NAME } from '../config.js';
 
 /**
  * @typedef {Object} Evidence
@@ -477,7 +477,10 @@ export const RULES = [
             `three things: members get direct settlement with providers instead of paying and claiming back, the client ` +
             `gets a single point of contact for pre-certification, and AIB gets claims visibility on the account. That ` +
             `last one compounds — every benefits recommendation AIB can make on this client currently rests on ` +
-            `guesswork, because the utilisation data sits with someone else.`,
+            `guesswork, because the utilisation data sits with someone else.` +
+            (GROUP_NAME
+              ? ` It also keeps the administration inside ${GROUP_NAME} rather than with ${policy.carrier}.`
+              : ''),
           evidence: [
             { kind: 'policy', ref: policy.id, detail: `carrier ${policy.carrier}, administrator ${policy.administrator}, ${policy.lives ?? '?'} lives` },
           ],
