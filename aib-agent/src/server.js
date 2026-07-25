@@ -30,7 +30,7 @@ const PORT = Number(process.env.PORT ?? 4000);
 
 // Loaded once at boot. A live deployment should watch the source and reload;
 // for now, restarting the process is the refresh.
-const book = loadBook();
+const book = await loadBook();
 const ix = indexBook(book);
 const benchmarks = buildBenchmarks(ix);
 const now = new Date();

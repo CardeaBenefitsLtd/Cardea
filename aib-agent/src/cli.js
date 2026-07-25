@@ -79,8 +79,8 @@ function strengthColour(strength) {
   return strength === 'strong' ? c.green(strength) : strength === 'moderate' ? c.amber(strength) : c.dim(strength);
 }
 
-function loadEverything() {
-  const book = loadBook();
+async function loadEverything() {
+  const book = await loadBook();
   const ix = indexBook(book);
   const benchmarks = buildBenchmarks(ix);
   if (book.validation?.warnings?.length) {
@@ -115,7 +115,7 @@ function requireApiKey() {
 // ----------------------------------------------------------------- commands
 
 async function cmdOpportunities() {
-  const { ix, benchmarks, now } = loadEverything();
+  const { ix, benchmarks, now } = await loadEverything();
   let ranked = rankOpportunities(
     findOpportunities(ix, { now, benchmarks, clientIds: flags.client ? [flags.client] : undefined }),
   );
@@ -162,7 +162,7 @@ async function cmdBrief() {
   if (!flags.client) { console.error(c.red('brief needs --client CL-XXXX')); process.exit(1); }
   requireApiKey();
 
-  const { ix, benchmarks, now } = loadEverything();
+  const { ix, benchmarks, now } = await loadEverything();
   const analyst = createAnalyst({ ix, benchmarks, now, onEvent: reporter() });
   const brief = await analyst.briefClient(flags.client);
 
@@ -214,7 +214,7 @@ async function cmdBrief() {
 
 async function cmdSweep() {
   requireApiKey();
-  const { ix, benchmarks, now } = loadEverything();
+  const { ix, benchmarks, now } = await loadEverything();
   const analyst = createAnalyst({ ix, benchmarks, now, onEvent: reporter() });
   const sweep = await analyst.sweepBook({ limit: Number(flags.limit ?? 8) });
 
@@ -264,7 +264,7 @@ async function cmdAsk() {
   if (!question) { console.error(c.red('ask needs a question in quotes')); process.exit(1); }
   requireApiKey();
 
-  const { ix, benchmarks, now } = loadEverything();
+  const { ix, benchmarks, now } = await loadEverything();
   const analyst = createAnalyst({ ix, benchmarks, now, onEvent: reporter() });
   const result = await analyst.ask(question);
 

@@ -56,6 +56,7 @@ export const CATALOGUE = {
     rate: 0.0035,
     minPremiumTTD: 6000,
     revenueRate: 0.078, // Property
+    semantic: 'property',
   },
   business_interruption: {
     key: 'business_interruption',
@@ -67,6 +68,7 @@ export const CATALOGUE = {
     rate: 0.0042,
     minPremiumTTD: 8000,
     revenueRate: 0.078, // Property
+    semantic: 'pecuniary',
     requires: ['property_all_risk'],
   },
   motor_fleet: {
@@ -79,6 +81,7 @@ export const CATALOGUE = {
     rate: 4200,
     minPremiumTTD: 12000,
     revenueRate: 0.15, // Motor Vehicle
+    semantic: 'motor',
   },
   marine_cargo: {
     key: 'marine_cargo',
@@ -90,6 +93,7 @@ export const CATALOGUE = {
     rate: 0.0045,
     minPremiumTTD: 5000,
     revenueRate: 0.129, // Marine, Aviation and Transport
+    semantic: 'marine',
   },
   public_liability: {
     key: 'public_liability',
@@ -101,6 +105,7 @@ export const CATALOGUE = {
     rate: 0.0011,
     minPremiumTTD: 7000,
     revenueRate: 0.088, // Liability
+    semantic: 'liability',
   },
   employers_liability: {
     key: 'employers_liability',
@@ -112,6 +117,7 @@ export const CATALOGUE = {
     rate: 0.0009,
     minPremiumTTD: 6000,
     revenueRate: 0.088, // Liability
+    semantic: 'liability',
   },
   products_liability: {
     key: 'products_liability',
@@ -123,6 +129,7 @@ export const CATALOGUE = {
     rate: 0.001,
     minPremiumTTD: 7500,
     revenueRate: 0.088, // Liability
+    semantic: 'liability',
   },
   professional_indemnity: {
     key: 'professional_indemnity',
@@ -134,6 +141,7 @@ export const CATALOGUE = {
     rate: 0.0014,
     minPremiumTTD: 9000,
     revenueRate: 0.088, // Liability
+    semantic: 'liability',
   },
   directors_officers: {
     key: 'directors_officers',
@@ -145,6 +153,7 @@ export const CATALOGUE = {
     rate: 0.0012,
     minPremiumTTD: 12000,
     revenueRate: 0.088, // Liability
+    semantic: 'liability',
   },
   cyber_liability: {
     key: 'cyber_liability',
@@ -156,6 +165,7 @@ export const CATALOGUE = {
     rate: 0.0016,
     minPremiumTTD: 10000,
     revenueRate: 0.088, // Liability
+    semantic: 'liability',
   },
   contractors_all_risk: {
     key: 'contractors_all_risk',
@@ -167,6 +177,7 @@ export const CATALOGUE = {
     rate: 0.005,
     minPremiumTTD: 15000,
     revenueRate: 0.078, // Property
+    semantic: 'property',
   },
   machinery_breakdown: {
     key: 'machinery_breakdown',
@@ -178,6 +189,7 @@ export const CATALOGUE = {
     rate: 0.0028,
     minPremiumTTD: 6000,
     revenueRate: 0.078, // Property
+    semantic: 'property',
     requires: ['property_all_risk'],
   },
   money_fidelity: {
@@ -189,6 +201,7 @@ export const CATALOGUE = {
     basis: 'flat',
     rate: 9000,
     revenueRate: 0.136, // Pecuniary Loss
+    semantic: 'pecuniary',
   },
   group_personal_accident: {
     key: 'group_personal_accident',
@@ -200,6 +213,7 @@ export const CATALOGUE = {
     rate: 320,
     minPremiumTTD: 5000,
     revenueRate: 0.172, // Personal Accident Short Term
+    semantic: 'personal_accident',
   },
 
   // --------------------------------------------------------------- benefits
@@ -213,6 +227,7 @@ export const CATALOGUE = {
     rate: 6200,
     minPremiumTTD: 40000,
     revenueRate: 0.061, // Accident and Sickness
+    semantic: 'health',
   },
   intl_health_usd: {
     key: 'intl_health_usd',
@@ -226,6 +241,7 @@ export const CATALOGUE = {
     rate: 8900,
     minPremiumTTD: 60000,
     revenueRate: 0.061, // Accident and Sickness
+    semantic: 'health',
   },
   group_life: {
     key: 'group_life',
@@ -237,6 +253,7 @@ export const CATALOGUE = {
     rate: 1400,
     minPremiumTTD: 15000,
     revenueRate: 0.077, // Life
+    semantic: 'life',
   },
   group_critical_illness: {
     key: 'group_critical_illness',
@@ -248,6 +265,7 @@ export const CATALOGUE = {
     rate: 900,
     minPremiumTTD: 12000,
     revenueRate: 0.061, // Accident and Sickness
+    semantic: 'health',
     requires: ['group_health_local'],
   },
   dental_rider: {
@@ -260,6 +278,7 @@ export const CATALOGUE = {
     rate: 780,
     minPremiumTTD: 8000,
     revenueRate: 0.061, // Accident and Sickness
+    semantic: 'health',
     requires: ['group_health_local'],
   },
   vision_rider: {
@@ -272,6 +291,7 @@ export const CATALOGUE = {
     rate: 420,
     minPremiumTTD: 5000,
     revenueRate: 0.061, // Accident and Sickness
+    semantic: 'health',
     requires: ['group_health_local'],
   },
   group_pension: {
@@ -284,6 +304,7 @@ export const CATALOGUE = {
     rate: 0.0008,
     minPremiumTTD: 25000,
     revenueRate: 0.077, // Life
+    semantic: 'life',
   },
 
   // --------------------------------------------------------------- personal
@@ -295,6 +316,7 @@ export const CATALOGUE = {
     basis: 'flat',
     rate: 5200,
     revenueRate: 0.15, // Motor Vehicle
+    semantic: 'motor',
   },
   homeowners: {
     key: 'homeowners',
@@ -305,6 +327,7 @@ export const CATALOGUE = {
     rate: 0.0032,
     minPremiumTTD: 2500,
     revenueRate: 0.078, // Property
+    semantic: 'property',
   },
   individual_life: {
     key: 'individual_life',
@@ -315,6 +338,7 @@ export const CATALOGUE = {
     basis: 'flat',
     rate: 7200,
     revenueRate: 0.077, // Life
+    semantic: 'life',
   },
   travel: {
     key: 'travel',
@@ -324,6 +348,7 @@ export const CATALOGUE = {
     basis: 'flat',
     rate: 1800,
     revenueRate: 0.061, // Accident and Sickness
+    semantic: 'health',
   },
 
   // ------------------------------------------ health administration services
@@ -343,6 +368,7 @@ export const CATALOGUE = {
     rate: 540,
     minPremiumTTD: 25000,
     revenueRate: TPA_REVENUE_SHARE,
+    semantic: 'health',
     requires: ['group_health_local'],
     tpa: true,
   },
@@ -358,6 +384,7 @@ export const CATALOGUE = {
     rate: 310,
     minPremiumTTD: 15000,
     revenueRate: TPA_REVENUE_SHARE,
+    semantic: 'health',
     requires: ['group_health_local'],
     tpa: true,
   },
@@ -373,16 +400,116 @@ if (!TPA_ENABLED) {
   }
 }
 
+/** The semantic category of a line, or null if unmapped. */
+export function semanticOf(key) {
+  return CATALOGUE[key]?.semantic ?? null;
+}
+
 /** True when the line is delivered by the health TPA rather than placed with a carrier. */
 export function isTpaLine(key) {
   return Boolean(CATALOGUE[key]?.tpa);
 }
 
+/**
+ * Realised brokerage by profit centre, from the IBR register. Lines discovered
+ * in a live export are rated from this table rather than guessed at.
+ */
+export const PROFIT_CENTRE_RATES = {
+  'Property': 0.078,
+  'Motor Vehicle': 0.15,
+  'Marine, Aviation and Transport': 0.129,
+  'Liability': 0.088,
+  'Workers Compensation': 0.13,
+  'Accident and Sickness': 0.061,
+  'Life': 0.077,
+  'Pecuniary Loss': 0.136,
+  'Personal Accident Short Term': 0.172,
+  'Disability Income': 0.125,
+};
+
+/**
+ * What a line *is*, independent of what anyone calls it.
+ *
+ * Rules must not name line keys directly. This codebase invented keys like
+ * `group_health_local`; AIB's register calls the same thing `GPHH`; a third
+ * export will call it something else again. A rule that says "health cover
+ * with no life cover" should hold in all three, so rules reason about
+ * semantics and the mapping lives here.
+ */
+export const PROFIT_CENTRE_SEMANTICS = {
+  'Property': 'property',
+  'Motor Vehicle': 'motor',
+  'Marine, Aviation and Transport': 'marine',
+  'Liability': 'liability',
+  'Workers Compensation': 'workers_comp',
+  'Accident and Sickness': 'health',
+  'Life': 'life',
+  'Pecuniary Loss': 'pecuniary',
+  'Personal Accident Short Term': 'personal_accident',
+  'Disability Income': 'disability',
+};
+
+/** Line codes whose profit centre understates them — group life sits under Accident and Sickness. */
+export const LINE_CODE_SEMANTICS = {
+  GLFH: 'life',
+  GPLF: 'life',
+  GPHH: 'health',
+};
+
+/** Blended rate, used when a profit centre is unrecognised. */
+export const BLENDED_REVENUE_RATE = 0.085;
+
+const DEPARTMENT_FAMILY = {
+  'Personal Lines': 'personal',
+  'Corporate': 'general',
+  'Binding Facilities': 'general',
+  'Employee Benefits': 'benefits',
+  'Third Party Administration': 'service',
+};
+
+/**
+ * Register a line discovered in a live export.
+ *
+ * AIB's register carries 92 line codes of its own; this codebase cannot know
+ * what each means, and inventing a description would be worse than admitting
+ * it. So a discovered line is registered with its code as its name, its family
+ * taken from the department that wrote it, and its rate from the profit centre
+ * — all facts the register actually supplies. Anything richer has to come from
+ * someone at AIB.
+ *
+ * @param {{code: string, profitCentre?: string, department?: string}} entry
+ */
+export function registerLine({ code, profitCentre, department }) {
+  if (!code || CATALOGUE[code]) return CATALOGUE[code];
+  return (CATALOGUE[code] = {
+    key: code,
+    name: code,
+    family: DEPARTMENT_FAMILY[department] ?? 'general',
+    description:
+      `Line code ${code} from AIB's register` +
+      (profitCentre ? `, in the ${profitCentre} profit centre` : '') +
+      (department ? `, written by ${department}` : '') +
+      '. No description held — the register carries the code but not its meaning.',
+    basis: 'flat',
+    rate: 10000,
+    revenueRate: PROFIT_CENTRE_RATES[profitCentre] ?? BLENDED_REVENUE_RATE,
+    semantic: LINE_CODE_SEMANTICS[code] ?? PROFIT_CENTRE_SEMANTICS[profitCentre] ?? null,
+    profitCentre,
+    department,
+    discovered: true,
+  });
+}
+
 /** @param {string} key */
 export function product(key) {
   const p = CATALOGUE[key];
-  if (!p) throw new Error(`Unknown product line "${key}" — add it to engine/catalogue.js`);
+  if (!p) throw new Error(`Unknown product line "${key}" — add it to engine/catalogue.js or register it from the export`);
   return p;
+}
+
+/** Like `product`, but tolerates a line the catalogue has never seen. */
+export function productOrNull(key) {
+  return CATALOGUE[key] ?? null;
 }
 
 export const LINE_KEYS = Object.keys(CATALOGUE);
@@ -435,7 +562,8 @@ export function estimatePremiumTTD(line, client, ctx = {}) {
  * @param {string} line @param {number} premiumTTD
  */
 export function estimateRevenueTTD(line, premiumTTD) {
-  return Math.round(premiumTTD * product(line).revenueRate);
+  const rate = CATALOGUE[line]?.revenueRate ?? BLENDED_REVENUE_RATE;
+  return Math.round(premiumTTD * rate);
 }
 
 /**

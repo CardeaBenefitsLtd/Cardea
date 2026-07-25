@@ -16,7 +16,7 @@ import { createAnalyst } from '../src/agent/analyst.js';
 
 const NOW = new Date('2026-07-25T00:00:00Z');
 
-const book = loadBook({ source: 'sample' });
+const book = await loadBook({ source: 'sample' });
 const ix = indexBook(book);
 const benchmarks = buildBenchmarks(ix);
 const clientId = book.clients[0].id;

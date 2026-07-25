@@ -14,8 +14,9 @@
  */
 
 import {
-  policiesFor, membersFor, claimsFor, hasLine, nextRenewalFor,
-  daysUntil, yearsSince, ageOf, cohortKey, clientPremiumTTD, claimsSummary,
+  policiesFor, membersFor, claimsFor, hasLine, hasSemantic, semanticsFor,
+  departmentsFor, nextRenewalFor, daysUntil, yearsSince, ageOf, cohortKey,
+  clientPremiumTTD, claimsSummary,
 } from '../data/book.js';
 import { CATALOGUE, estimatePremiumTTD, estimateRevenueTTD, livesFor, impliedSumInsured } from './catalogue.js';
 import { toTTD } from '../data/schema.js';
@@ -54,6 +55,29 @@ const GOODS = new Set(['Manufacturing', 'Distribution', 'Retail']);
 const PLANT_HEAVY = new Set(['Manufacturing', 'Energy', 'Agriculture']);
 const FIELD_RISK = new Set(['Construction', 'Manufacturing', 'Agriculture', 'Transport & Logistics', 'Energy']);
 
+/**
+ * Minimum annual premium for a single-line account to be worth a round-out
+ * conversation. Tuned against the real register: TT$50k leaves 154 accounts,
+ * which is a fortnight of work rather than a spreadsheet nobody opens.
+ */
+export const SINGLE_LINE_PREMIUM_FLOOR_TTD = Number(process.env.AIB_ROUNDOUT_FLOOR_TTD ?? 50000);
+
+/**
+ * Minimum annual premium for a cross-department whitespace finding. Higher
+ * than the round-out floor because the conversation is a bigger ask: on the
+ * real register TT$100k leaves 131 corporate accounts with no benefits, which
+ * is a campaign rather than a list.
+ */
+export const DEPARTMENT_WHITESPACE_FLOOR_TTD = Number(process.env.AIB_WHITESPACE_FLOOR_TTD ?? 100000);
+
+/**
+ * Ceiling on a whitespace estimate. Scaling a benefits opportunity off
+ * general-lines premium breaks down at the top of the book — a quarter of a
+ * TT$60M petrochemical programme is not a benefits plan anyone would write.
+ * The cap keeps one account from dominating the pipeline on an assumption.
+ */
+export const WHITESPACE_ESTIMATE_CAP_TTD = Number(process.env.AIB_WHITESPACE_CAP_TTD ?? 2500000);
+
 /** Sums insured older than this are treated as having drifted out of date. */
 const SUM_INSURED_STALE_YEARS = 3;
 /** Assumed compound construction/replacement cost inflation for the drift estimate. */
@@ -67,6 +91,7 @@ export const RULES = [
   {
     id: 'property_sum_insured_drift',
     title: 'Property sum insured has not been revised',
+    requires: ['sumInsured', 'sumInsuredSetAt'],
     kind: 'adequacy',
     run(client, ctx) {
       const out = [];
@@ -106,6 +131,7 @@ export const RULES = [
   {
     id: 'property_no_flood',
     title: 'Property in a flood-prone area without flood cover',
+    requires: ['extensions', 'floodZone'],
     kind: 'gap',
     run(client, ctx) {
       if (!client.floodZone) return [];
@@ -140,6 +166,7 @@ export const RULES = [
   {
     id: 'property_no_catastrophe',
     title: 'Property without earthquake cover',
+    requires: ['extensions'],
     kind: 'gap',
     run(client, ctx) {
       const out = [];
@@ -169,6 +196,7 @@ export const RULES = [
   {
     id: 'property_without_bi',
     title: 'Material damage cover with no business interruption',
+    requires: ['sumInsured', 'revenue'],
     kind: 'gap',
     run(client, ctx) {
       if (client.segment === 'personal') return [];
@@ -203,6 +231,7 @@ export const RULES = [
   {
     id: 'bi_indemnity_short',
     title: 'Business interruption indemnity period may be too short',
+    requires: ['indemnityPeriod'],
     kind: 'adequacy',
     run(client, ctx) {
       const out = [];
@@ -235,6 +264,7 @@ export const RULES = [
   {
     id: 'no_machinery_breakdown',
     title: 'Plant-heavy operation without machinery breakdown cover',
+    requires: ['industry', 'sumInsured'],
     kind: 'gap',
     run(client, ctx) {
       if (!PLANT_HEAVY.has(client.industry)) return [];
@@ -341,6 +371,7 @@ export const RULES = [
   {
     id: 'no_marine_cargo',
     title: 'Importer without marine cargo cover',
+    requires: ['industry', 'revenue'],
     kind: 'gap',
     run(client, ctx) {
       if (client.segment === 'personal') return [];
@@ -369,6 +400,7 @@ export const RULES = [
   {
     id: 'no_contractors_all_risk',
     title: 'Contractor without contract works cover',
+    requires: ['industry', 'revenue'],
     kind: 'gap',
     run(client, ctx) {
       if (client.industry !== 'Construction') return [];
@@ -394,6 +426,7 @@ export const RULES = [
   {
     id: 'motor_fleet_understated',
     title: 'Declared fleet may lag the actual fleet',
+    requires: ['vehicles', 'headcount'],
     kind: 'adequacy',
     run(client, ctx) {
       const fleet = policiesFor(ctx.ix, client.id).find((p) => p.line === 'motor_fleet');
@@ -430,6 +463,7 @@ export const RULES = [
   {
     id: 'no_benefits_programme',
     title: 'Employer with no employee benefits programme',
+    requires: ['headcount'],
     kind: 'portfolio',
     run(client, ctx) {
       if (client.segment === 'personal') return [];
@@ -459,6 +493,7 @@ export const RULES = [
   {
     id: 'health_not_administered_by_tpa',
     title: `Group health administered outside ${TPA_NAME}`,
+    requires: ['department'],
     kind: 'portfolio',
     run(client, ctx) {
       if (TPA_RELATIONSHIP === 'none') return [];
@@ -496,6 +531,7 @@ export const RULES = [
   {
     id: 'no_overseas_network',
     title: `Health plan without access to the ${TPA_NAME} overseas network`,
+    requires: ['extensions', 'claims'],
     kind: 'gap',
     run(client, ctx) {
       if (TPA_RELATIONSHIP === 'none') return [];
@@ -540,6 +576,7 @@ export const RULES = [
   {
     id: 'no_intl_health',
     title: 'Senior staff without a USD international plan',
+    requires: ['headcount'],
     kind: 'gap',
     run(client, ctx) {
       if (client.segment !== 'corporate') return [];
@@ -571,12 +608,14 @@ export const RULES = [
   {
     id: 'health_without_group_life',
     title: 'Group health with no death-in-service benefit',
+    requires: [],
     kind: 'gap',
     run(client, ctx) {
-      if (!hasLine(ctx.ix, client.id, 'group_health_local')) return [];
-      if (hasLine(ctx.ix, client.id, 'group_life')) return [];
+      if (!hasSemantic(ctx.ix, client.id, 'health')) return [];
+      if (hasSemantic(ctx.ix, client.id, 'life')) return [];
 
-      const health = policiesFor(ctx.ix, client.id).find((p) => p.line === 'group_health_local');
+      const health = policiesFor(ctx.ix, client.id).find((p) => semanticsFor(ctx.ix, client.id).has('health') && p.profitCentre !== 'Life')
+        ?? policiesFor(ctx.ix, client.id)[0];
       return [make(client, ctx, {
         ruleId: this.id, ruleTitle: this.title, kind: this.kind,
         line: 'group_life',
@@ -598,6 +637,7 @@ export const RULES = [
   {
     id: 'no_critical_illness',
     title: 'Mature benefits programme without critical illness',
+    requires: ['claims'],
     kind: 'gap',
     run(client, ctx) {
       if (!hasLine(ctx.ix, client.id, 'group_health_local')) return [];
@@ -629,6 +669,7 @@ export const RULES = [
   {
     id: 'declined_claims_signal_rider',
     title: 'Repeated declines in an excluded benefit category',
+    requires: ['claims', 'declineReasons'],
     kind: 'signal',
     run(client, ctx) {
       if (!hasLine(ctx.ix, client.id, 'group_health_local')) return [];
@@ -666,6 +707,7 @@ export const RULES = [
   {
     id: 'dependants_ageing_out',
     title: 'Dependants about to lose cover',
+    requires: ['census', 'memberDob'],
     kind: 'lifecycle',
     run(client, ctx) {
       const members = membersFor(ctx.ix, client.id);
@@ -709,6 +751,7 @@ export const RULES = [
   {
     id: 'no_group_personal_accident',
     title: 'Physical-risk workforce without personal accident cover',
+    requires: ['industry', 'headcount'],
     kind: 'gap',
     run(client, ctx) {
       if (client.segment === 'personal') return [];
@@ -733,15 +776,146 @@ export const RULES = [
     },
   },
 
+
+  // ------------------------------------------------- register-native rules
+  //
+  // These read what a transaction register actually carries — which department
+  // wrote the business — rather than firmographics it does not have. On AIB's
+  // register they are the rules that do the work.
+  {
+    id: 'department_whitespace_benefits',
+    title: 'General-lines client with no benefits business',
+    requires: ['department'],
+    kind: 'portfolio',
+    run(client, ctx) {
+      const departments = departmentsFor(ctx.ix, client.id);
+      if (!departments.has('Corporate')) return [];
+      if (departments.has('Employee Benefits') || departments.has('Third Party Administration')) return [];
+
+      const premium = clientPremiumTTD(ctx.ix, client.id);
+      if (premium < DEPARTMENT_WHITESPACE_FLOOR_TTD) return [];
+
+      const held = policiesFor(ctx.ix, client.id);
+      const centres = [...new Set(held.map((p) => p.profitCentre).filter(Boolean))];
+
+      return [make(client, ctx, {
+        ruleId: this.id, ruleTitle: this.title, kind: this.kind,
+        line: held[0]?.line ?? 'UNKNOWN',
+        headline: `Corporate account worth ${money(premium)} a year with nothing on the benefits side`,
+        rationale:
+          `AIB writes ${held.length} ${held.length === 1 ? 'policy' : 'policies'} for this client through the Corporate ` +
+          `department — ${centres.join(', ') || 'general lines'} — worth ${money(premium)} in annual premium, and nothing ` +
+          `through Employee Benefits or the administration side. An employer of this size either has a benefits ` +
+          `programme placed somewhere else, which is a displacement opportunity with a named incumbent, or has none at ` +
+          `all, which is a different conversation entirely. The register cannot tell which; the account executive can, ` +
+          `in one question.`,
+        evidence: [
+          { kind: 'client', ref: client.id, detail: `Corporate only; ${held.length} policies, ${money(premium)} premium; departments: ${[...departments].join(', ')}` },
+          ...held.slice(0, 3).map((p) => ({ kind: 'policy', ref: p.id, detail: `${p.lineCode ?? p.line} in ${p.profitCentre || 'unknown centre'}, ${money(toTTD(p.annualPremium ?? 0, p.currency))}` })),
+        ],
+        // Sizing a benefits programme needs headcount, which a transaction
+        // register does not carry. This is a capped placeholder so the item can
+        // be ranked at all — it is not a forecast, and on the largest accounts
+        // it will understate badly. Replace it the moment headcount is available.
+        estPremiumTTD: Math.min(Math.round(premium * 0.25), WHITESPACE_ESTIMATE_CAP_TTD),
+        confidence: 0.6,
+        effort: 'high',
+      })];
+    },
+  },
+
+  {
+    id: 'benefits_without_general_lines',
+    title: 'Benefits client with no general-lines business',
+    requires: ['department'],
+    kind: 'portfolio',
+    run(client, ctx) {
+      const departments = departmentsFor(ctx.ix, client.id);
+      const hasBenefits = departments.has('Employee Benefits') || departments.has('Third Party Administration');
+      if (!hasBenefits) return [];
+      if (departments.has('Corporate')) return [];
+
+      const premium = clientPremiumTTD(ctx.ix, client.id);
+      if (premium < DEPARTMENT_WHITESPACE_FLOOR_TTD) return [];
+      const held = policiesFor(ctx.ix, client.id);
+
+      return [make(client, ctx, {
+        ruleId: this.id, ruleTitle: this.title, kind: this.kind,
+        line: held[0]?.line ?? 'UNKNOWN',
+        headline: `Benefits account worth ${money(premium)} a year with no general lines placed here`,
+        rationale:
+          `This client trusts AIB with its employee benefits — ${money(premium)} a year across ` +
+          `${held.length} ${held.length === 1 ? 'policy' : 'policies'} — and places none of its property, motor or ` +
+          `liability cover through the Corporate department. That is the easier direction of travel: the relationship ` +
+          `and the credibility already exist, and benefits contacts sit close to the people who buy the rest. Establish ` +
+          `who handles the general-lines programme before approaching it.`,
+        evidence: [
+          { kind: 'client', ref: client.id, detail: `benefits only; departments: ${[...departments].join(', ')}; ${money(premium)} premium` },
+          ...held.slice(0, 3).map((p) => ({ kind: 'policy', ref: p.id, detail: `${p.lineCode ?? p.line} in ${p.profitCentre || 'unknown centre'}` })),
+        ],
+        estPremiumTTD: Math.min(Math.round(premium * 0.4), WHITESPACE_ESTIMATE_CAP_TTD),
+        confidence: 0.55,
+        effort: 'high',
+      })];
+    },
+  },
+
+  {
+    id: 'health_outside_administration',
+    title: 'Health business not running through the administrator',
+    requires: ['department'],
+    kind: 'portfolio',
+    run(client, ctx) {
+      if (TPA_RELATIONSHIP === 'none') return [];
+      const departments = departmentsFor(ctx.ix, client.id);
+      if (!departments.has('Employee Benefits')) return [];
+      if (departments.has('Third Party Administration')) return [];
+      if (!hasSemantic(ctx.ix, client.id, 'health')) return [];
+
+      const health = policiesFor(ctx.ix, client.id).filter((p) => p.profitCentre === 'Accident and Sickness');
+      if (!health.length) return [];
+      const premium = health.reduce((sum, p) => sum + toTTD(p.annualPremium ?? 0, p.currency), 0);
+
+      return [make(client, ctx, {
+        ruleId: this.id, ruleTitle: this.title, kind: this.kind,
+        line: 'cardea_tpa',
+        headline: `${money(premium)} of health business written outside ${TPA_NAME}`,
+        rationale:
+          `This client's health cover is written through Employee Benefits and does not appear under the ` +
+          `administration department, so ${TPA_NAME} is not adjudicating it. Two things follow. Members are settling ` +
+          `with providers themselves and claiming back rather than going through pre-certification and direct ` +
+          `settlement. And AIB cannot see the utilisation, which means every further benefits recommendation on this ` +
+          `account is guesswork.` +
+          (GROUP_NAME ? ` It would also keep the work inside ${GROUP_NAME}.` : ''),
+        evidence: health.slice(0, 4).map((p) => ({
+          kind: 'policy', ref: p.id,
+          detail: `${p.lineCode ?? p.line}, ${money(toTTD(p.annualPremium ?? 0, p.currency))}, carrier ${p.carrier}, department ${p.department}`,
+        })),
+        estPremiumTTD: Math.round(premium * 0.06),
+        confidence: 0.7,
+        effort: 'medium',
+      })];
+    },
+  },
+
   // --------------------------------------------------------------- portfolio
   {
     id: 'single_line_client',
     title: 'Single-line client at risk of walking',
+    requires: [],
     kind: 'portfolio',
     run(client, ctx) {
       const policies = policiesFor(ctx.ix, client.id);
       if (policies.length !== 1) return [];
       const only = policies[0];
+
+      // Without a floor this fires on most of a real book — 8,442 of 10,728
+      // accounts on AIB's register — which is a data dump, not a work list.
+      // The floor is what turns it into something an account executive can act
+      // on in a fortnight.
+      const premium = toTTD(only.annualPremium ?? 0, only.currency);
+      if (premium < SINGLE_LINE_PREMIUM_FLOOR_TTD) return [];
+
       const tenure = yearsSince(client.relationshipStart, ctx.now);
 
       // What do comparable clients carry that this one does not?
@@ -779,6 +953,7 @@ export const RULES = [
   {
     id: 'peer_attach_gap',
     title: 'Line carried by most comparable clients but not this one',
+    requires: ['industry'],
     kind: 'portfolio',
     run(client, ctx) {
       const cohort = ctx.benchmarks.get(cohortKey(client));
@@ -823,7 +998,7 @@ export const RULES = [
  */
 function liabilityGap({ id, line, title, applies, headline, rationale, confidence, effort = 'medium' }) {
   return {
-    id, title, kind: /** @type {const} */ ('gap'),
+    id, title, requires: ['industry', 'revenue'], kind: /** @type {const} */ ('gap'),
     run(client, ctx) {
       if (!applies(client)) return [];
       if (hasLine(ctx.ix, client.id, line)) return [];
@@ -869,6 +1044,14 @@ function money(n, currency = 'TTD') {
 
 // ---------------------------------------------------------------- the engine
 
+/** Rules skipped on the most recent sweep, and what they were missing. */
+let lastDormantRules = [];
+
+/** @returns {{ruleId: string, missing: string[]}[]} */
+export function dormantRules() {
+  return lastDormantRules;
+}
+
 /**
  * Run every rule across every client (or a subset) and return deduplicated
  * opportunities.
@@ -885,13 +1068,27 @@ function money(n, currency = 'TTD') {
 export function findOpportunities(ix, opts = {}) {
   const now = opts.now ?? new Date();
   const benchmarks = opts.benchmarks ?? new Map();
-  const ctx = { ix, now, benchmarks };
+  const capabilities = opts.capabilities ?? ix.book.capabilities ?? null;
+  const ctx = { ix, now, benchmarks, capabilities };
 
   const clients = opts.clientIds
     ? opts.clientIds.map((id) => ix.clientsById.get(id)).filter(Boolean)
     : ix.book.clients;
 
-  const rules = opts.ruleIds ? RULES.filter((r) => opts.ruleIds.includes(r.id)) : RULES;
+  let rules = opts.ruleIds ? RULES.filter((r) => opts.ruleIds.includes(r.id)) : RULES;
+
+  // A rule that needs a field the export does not carry must not run. Firing
+  // on absent data reports a gap in the book when the gap is in the export,
+  // which is the most expensive kind of wrong answer this system can give.
+  const dormant = [];
+  if (capabilities && !opts.ignoreCapabilities) {
+    rules = rules.filter((rule) => {
+      const missing = (rule.requires ?? []).filter((field) => !capabilities[field]);
+      if (missing.length) { dormant.push({ ruleId: rule.id, missing }); return false; }
+      return true;
+    });
+  }
+  lastDormantRules = dormant;
 
   /** @type {Map<string, Opportunity>} */
   const byClientLine = new Map();

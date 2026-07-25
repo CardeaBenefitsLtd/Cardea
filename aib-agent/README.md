@@ -53,6 +53,17 @@ policies, members, claims. Three adapters ship:
 | `sample` | The bundled synthetic book. Default. |
 | `json` | A single JSON file at `BOOK_PATH` matching the schema. |
 | `csv` | A directory at `BOOK_PATH` holding `clients.csv`, `policies.csv`, `members.csv`, `claims.csv`. |
+| `ibr` | AIB's IBR transaction register, exported to CSV at `BOOK_PATH`. |
+
+```
+BOOK_SOURCE=ibr BOOK_PATH=./ibr.csv npm run opportunities
+```
+
+The register is billing data, not a policy master: one row per invoice line, several per policy,
+plus taxes, fees and reversals. The adapter filters to premium-bearing transaction codes, drops
+reversals, collapses transactions into policy terms and terms into policies, and learns AIB's own
+92 line codes rather than expecting the ones invented here. On the live register it turns 61,605
+rows into 10,728 clients and 14,924 policies.
 
 Pointing this at the live book is the whole integration. Export the four tables, match the column
 names in the schema, and everything downstream works unchanged. `validateBook()` runs on load and
@@ -129,6 +140,31 @@ the real inter-company figure before the pipeline totals are shown to anyone who
 them.
 
 ---
+
+## Rules go dormant rather than guess
+
+Different exports carry different things. A rule that needs a sum insured must not run against an
+export that has none — firing on absent data reports a gap in the book when the gap is in the
+export, which is the most expensive mistake this system can make.
+
+So every rule declares what it needs, `bookCapabilities()` reports what the book actually carries,
+and the engine skips the rest and says which. On AIB's IBR register that leaves **6 of 29 rules
+active**, producing 370 findings across 284 clients:
+
+| Rule | Findings |
+|---|---|
+| Corporate client with no benefits business | 136 |
+| Health written outside the administrator | 75 |
+| Group health with no group life | 72 |
+| Single-line client worth rounding out | 58 |
+| Benefits client with no general lines | 29 |
+
+The other 23 are waiting on sums insured, policy extensions, claims and member census — none of
+which the register carries. `dormantRules()` names each one and what it is missing.
+
+**Floors matter more than rules.** Without a premium floor the round-out rule fires on 8,442 of
+10,728 accounts, which is a spreadsheet nobody opens. At TT$50k it is 58 accounts and a fortnight
+of work. `AIB_ROUNDOUT_FLOOR_TTD` and `AIB_WHITESPACE_FLOOR_TTD` are the dials.
 
 ## Ranking
 

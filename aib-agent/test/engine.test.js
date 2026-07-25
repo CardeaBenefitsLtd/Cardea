@@ -22,6 +22,9 @@ import { TOOL_DEFINITIONS, runTool } from '../src/agent/tools.js';
 
 const NOW = new Date('2026-07-25T00:00:00Z');
 
+/** Loaded once at module scope — `describe` callbacks are synchronous. */
+const SAMPLE_BOOK = await loadBook({ source: 'sample' });
+
 /** A hand-built book, so each rule can be tested against a known input. */
 function fixture(overrides = {}) {
   return {
@@ -133,7 +136,7 @@ describe('parseCsv', () => {
 // ---------------------------------------------------------------------- book
 
 describe('book queries', () => {
-  const book = loadBook({ source: 'sample' });
+  const book = SAMPLE_BOOK;
   const ix = indexBook(book);
 
   test('the sample book validates cleanly', () => {
@@ -209,7 +212,7 @@ describe('rules', () => {
   });
 
   test('every opportunity names a line that exists in the catalogue', () => {
-    const book = loadBook({ source: 'sample' });
+    const book = SAMPLE_BOOK;
     const { ix, benchmarks } = contextFor(book);
     const opps = findOpportunities(ix, { now: NOW, benchmarks });
     for (const opp of opps) {
@@ -218,7 +221,7 @@ describe('rules', () => {
   });
 
   test('every opportunity carries at least one piece of evidence', () => {
-    const book = loadBook({ source: 'sample' });
+    const book = SAMPLE_BOOK;
     const { ix, benchmarks } = contextFor(book);
     for (const opp of findOpportunities(ix, { now: NOW, benchmarks })) {
       assert.ok(opp.evidence.length > 0, `${opp.id} has no evidence`);
@@ -354,7 +357,7 @@ describe('rules', () => {
   });
 
   test('two rules landing on the same client and line collapse to one finding', () => {
-    const book = loadBook({ source: 'sample' });
+    const book = SAMPLE_BOOK;
     const { ix, benchmarks } = contextFor(book);
     const opps = findOpportunities(ix, { now: NOW, benchmarks });
     const keys = opps.map((o) => `${o.clientId}:${o.line}`);
@@ -486,7 +489,7 @@ describe('TPA relationship configuration', () => {
 // --------------------------------------------------------------------- tools
 
 describe('agent tools', () => {
-  const book = loadBook({ source: 'sample' });
+  const book = SAMPLE_BOOK;
   const ctx = contextFor(book);
   const sampleClientId = book.clients[0].id;
 

@@ -197,6 +197,54 @@ export function validateBook(book) {
   };
 }
 
+/**
+ * Which optional fields a book actually carries.
+ *
+ * Different exports expose different things: a transaction register has
+ * premium and renewal dates but no sums insured, no policy extensions, no
+ * claims and no census. A rule that depends on a field the book does not have
+ * should stay dormant and say so, not fire on absent data and report a gap
+ * that is really a gap in the export.
+ *
+ * A field counts as present only if enough records carry it to reason with —
+ * one populated row out of sixty thousand is noise, not a capability.
+ *
+ * @param {Book} book
+ * @param {{threshold?: number}} [opts] Minimum share of records, default 5%.
+ * @returns {Record<string, boolean>}
+ */
+export function bookCapabilities(book, opts = {}) {
+  const threshold = opts.threshold ?? 0.05;
+  const share = (list, predicate) => (list.length ? list.filter(predicate).length / list.length : 0);
+
+  const policies = book.policies ?? [];
+  const clients = book.clients ?? [];
+
+  return {
+    sumInsured: share(policies, (p) => Number.isFinite(p.sumInsured) && p.sumInsured > 0) >= threshold,
+    sumInsuredSetAt: share(policies, (p) => isIsoDate(p.sumInsuredSetAt)) >= threshold,
+    extensions: share(policies, (p) => Array.isArray(p.extensions) && p.extensions.length > 0) >= threshold,
+    indemnityPeriod: share(policies, (p) => Number.isFinite(p.indemnityPeriodMonths)) >= threshold,
+    renewalDate: share(policies, (p) => isIsoDate(p.renewalDate)) >= threshold,
+    premium: share(policies, (p) => Number.isFinite(p.annualPremium) && p.annualPremium !== 0) >= threshold,
+    lives: share(policies, (p) => Number.isFinite(p.lives) && p.lives > 0) >= threshold,
+    vehicles: share(policies, (p) => Number.isFinite(p.vehicles) && p.vehicles > 0) >= threshold,
+    administrator: share(policies, (p) => Boolean(p.administrator)) >= threshold,
+    department: share(policies, (p) => Boolean(p.department)) >= threshold,
+    profitCentre: share(policies, (p) => Boolean(p.profitCentre)) >= threshold,
+    priorTermPremium: share(policies, (p) => Number.isFinite(p.priorTermPremiumTTD)) >= threshold,
+    claims: (book.claims ?? []).length > 0,
+    declineReasons: share(book.claims ?? [], (c) => Boolean(c.declineReason)) >= threshold,
+    census: (book.members ?? []).length > 0,
+    memberDob: share(book.members ?? [], (m) => isIsoDate(m.dob)) >= threshold,
+    headcount: share(clients, (c) => Number.isFinite(c.headcount) && c.headcount > 0) >= threshold,
+    revenue: share(clients, (c) => Number.isFinite(c.annualRevenueTTD) && c.annualRevenueTTD > 0) >= threshold,
+    industry: share(clients, (c) => c.industry && c.industry !== 'Household') >= threshold,
+    locations: share(clients, (c) => Array.isArray(c.locations) && c.locations.length > 0) >= threshold,
+    floodZone: share(clients, (c) => c.floodZone === true) >= threshold,
+  };
+}
+
 /** @param {unknown} v */
 export function isIsoDate(v) {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) && !Number.isNaN(Date.parse(v));

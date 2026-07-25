@@ -15,15 +15,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { validateBook, toTTD, isIsoDate } from './schema.js';
+import { validateBook, toTTD, isIsoDate, bookCapabilities } from './schema.js';
+import { semanticOf } from '../engine/catalogue.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 /**
  * @param {{source?: 'sample'|'json'|'csv', path?: string, strict?: boolean}} [opts]
- * @returns {import('./schema.js').Book & {meta?: object}}
+ * @returns {Promise<import('./schema.js').Book & {meta?: object, capabilities: Record<string, boolean>}>}
  */
-export function loadBook(opts = {}) {
+export async function loadBook(opts = {}) {
   const source = opts.source ?? process.env.BOOK_SOURCE ?? 'sample';
   const path = opts.path ?? process.env.BOOK_PATH;
 
@@ -40,6 +41,12 @@ export function loadBook(opts = {}) {
       if (!path) throw new Error('BOOK_SOURCE=csv requires BOOK_PATH (a directory)');
       book = loadCsvDirectory(resolve(path));
       break;
+    case 'ibr': {
+      if (!path) throw new Error('BOOK_SOURCE=ibr requires BOOK_PATH (a CSV export of the IBR register)');
+      const { loadIbrRegister } = await import('./adapters/ibr.js');
+      book = loadIbrRegister(path);
+      break;
+    }
     default:
       throw new Error(`Unknown BOOK_SOURCE "${source}" (expected sample, json or csv)`);
   }
@@ -61,6 +68,7 @@ export function loadBook(opts = {}) {
     throw new Error(`Book has ${report.warnings.length} warning(s) and strict mode is on`);
   }
   book.validation = report;
+  book.capabilities = bookCapabilities(book);
   return book;
 }
 
@@ -208,6 +216,34 @@ export function claimsFor(ix, clientId) {
 /** @param {BookIndex} ix @param {string} clientId @param {string} line */
 export function hasLine(ix, clientId, line) {
   return ix.linesByClient.get(clientId)?.has(line) ?? false;
+}
+
+/**
+ * Whether a client carries any line of a given semantic category. This is how
+ * rules should ask — "do they have health cover?" holds across taxonomies,
+ * "do they have group_health_local?" only holds for one export.
+ * @param {BookIndex} ix @param {string} clientId @param {string} semantic
+ */
+export function hasSemantic(ix, clientId, semantic) {
+  for (const line of ix.linesByClient.get(clientId) ?? []) {
+    if (semanticOf(line) === semantic) return true;
+  }
+  return false;
+}
+
+/** Every semantic category a client holds. @param {BookIndex} ix @param {string} clientId */
+export function semanticsFor(ix, clientId) {
+  const out = new Set();
+  for (const line of ix.linesByClient.get(clientId) ?? []) {
+    const s = semanticOf(line);
+    if (s) out.add(s);
+  }
+  return out;
+}
+
+/** Departments a client has business in — register books only. */
+export function departmentsFor(ix, clientId) {
+  return new Set((ix.policiesByClient.get(clientId) ?? []).map((p) => p.department).filter(Boolean));
 }
 
 /** Total active premium for a client, normalised to TTD. */
