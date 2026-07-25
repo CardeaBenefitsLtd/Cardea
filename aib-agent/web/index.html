@@ -89,7 +89,7 @@
     font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
     background: var(--aib-tint); color: var(--aib); text-transform: uppercase; letter-spacing: .03em;
   }
-  .tag.cardea { background: #fdecef; color: var(--accent); }
+  .tag.tpa { background: #fdecef; color: var(--accent); }
   .tag.soon { background: #fff4e0; color: var(--moderate); }
   .strong { color: var(--strong); font-weight: 600; }
   .moderate { color: var(--moderate); font-weight: 600; }
@@ -141,7 +141,7 @@
         <option value="">All families</option>
         <option value="general">General insurance</option>
         <option value="benefits">Employee benefits</option>
-        <option value="service">Cardea services</option>
+        <option value="service">Administration services</option>
         <option value="personal">Personal lines</option>
       </select>
       <select id="f-kind">
@@ -159,7 +159,7 @@
         <option value="180">Renewing within 180 days</option>
       </select>
       <label style="display:flex;gap:6px;align-items:center;font-size:14px">
-        <input type="checkbox" id="f-cardea"> Cardea only
+        <input type="checkbox" id="f-cardea"> Administration only
       </label>
       <span id="pipeline-count" style="color:var(--muted);font-size:13px"></span>
     </div>
@@ -211,6 +211,7 @@ const ttd = (n) => 'TT$' + Math.round(n ?? 0).toLocaleString('en-US');
 const get = (url) => fetch(url).then((r) => r.json());
 
 let analystAvailable = false;
+let tpaName = 'TPA';
 
 // ------------------------------------------------------------------- chrome
 
@@ -223,6 +224,7 @@ for (const tab of document.querySelectorAll('nav button')) {
 
 get('/api/summary').then((s) => {
   analystAvailable = s.analystAvailable;
+  tpaName = s.tpa?.name ?? 'TPA';
   $('#stats').append(
     el('div', {}, 'Clients', el('b', { textContent: s.clients })),
     el('div', {}, 'Policies', el('b', { textContent: s.activePolicies })),
@@ -248,7 +250,7 @@ function renderOpportunity(opp, { showClient = true } = {}) {
       el('span', { className: 'rank', textContent: `${opp.rank}.` }),
       showClient ? el('span', { className: 'client', textContent: opp.clientName }) : null,
       el('span', { className: 'tag', textContent: opp.kind }),
-      opp.cardea ? el('span', { className: 'tag cardea', textContent: 'Cardea' }) : null,
+      opp.tpa ? el('span', { className: 'tag cardea', textContent: tpaName }) : null,
       soon ? el('span', { className: 'tag soon', textContent: `${opp.urgencyDays}d to renewal` }) : null,
     ),
     el('div', { className: 'headline' },
@@ -271,7 +273,7 @@ async function loadPipeline() {
   if ($('#f-family').value) params.set('family', $('#f-family').value);
   if ($('#f-kind').value) params.set('kind', $('#f-kind').value);
   if ($('#f-renewal').value) params.set('renewalWithinDays', $('#f-renewal').value);
-  if ($('#f-cardea').checked) params.set('cardeaOnly', 'true');
+  if ($('#f-cardea').checked) params.set('tpaOnly', 'true');
   params.set('limit', '60');
 
   const data = await get('/api/opportunities?' + params);

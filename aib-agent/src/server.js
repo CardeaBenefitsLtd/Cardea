@@ -22,6 +22,7 @@ import { rankOpportunities, summarise } from './engine/score.js';
 import { CATALOGUE } from './engine/catalogue.js';
 import { runTool } from './agent/tools.js';
 import { createAnalyst } from './agent/analyst.js';
+import { TPA_NAME, TPA_RELATIONSHIP, relationshipNotice } from './config.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const WEB_ROOT = join(here, '..', 'web');
@@ -60,6 +61,7 @@ async function api(url, req, res) {
       return json(res, 200, {
         ...JSON.parse(runTool('get_book_summary', {}, { ix, benchmarks, now }).content),
         analystAvailable: hasCredentials,
+        tpa: { name: TPA_NAME, relationship: TPA_RELATIONSHIP },
         validation: book.validation,
       });
     }
@@ -92,7 +94,7 @@ async function api(url, req, res) {
       let ranked = rankOpportunities(findOpportunities(ix, { now, benchmarks }));
       if (q.family) ranked = ranked.filter((o) => o.family === q.family);
       if (q.kind) ranked = ranked.filter((o) => o.kind === q.kind);
-      if (q.cardeaOnly === 'true') ranked = ranked.filter((o) => o.cardea);
+      if (q.tpaOnly === 'true') ranked = ranked.filter((o) => o.tpa);
       if (q.renewalWithinDays) {
         const days = Number(q.renewalWithinDays);
         ranked = ranked.filter((o) => o.urgencyDays >= 0 && o.urgencyDays <= days);
@@ -204,5 +206,6 @@ server.listen(PORT, () => {
   const pipeline = summarise(rankOpportunities(findOpportunities(ix, { now, benchmarks })));
   console.log(`\n  AIB broker console  http://localhost:${PORT}`);
   console.log(`  ${book.clients.length} clients · ${book.policies.length} policies · ${pipeline.opportunities} opportunities`);
-  console.log(`  analyst ${hasCredentials ? 'ready' : 'unavailable (no ANTHROPIC_API_KEY — rules engine still works)'}\n`);
+  console.log(`  analyst ${hasCredentials ? 'ready' : 'unavailable (no ANTHROPIC_API_KEY — rules engine still works)'}`);
+  console.log(`  ${relationshipNotice()}\n`);
 });

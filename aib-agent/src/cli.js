@@ -11,6 +11,7 @@ import { loadBook, indexBook, buildBenchmarks } from './data/book.js';
 import { findOpportunities } from './engine/rules.js';
 import { rankOpportunities, summarise } from './engine/score.js';
 import { CATALOGUE } from './engine/catalogue.js';
+import { TPA_NAME, relationshipNotice } from './config.js';
 import { createAnalyst } from './agent/analyst.js';
 
 const COLOUR = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -134,14 +135,15 @@ async function cmdOpportunities() {
   const s = summarise(ranked);
   console.log('');
   console.log(c.blue(c.bold('  Opportunities')) + c.dim(`  ${s.opportunities} across ${s.clientsWithOpportunities} clients`));
-  console.log(c.dim(`  indicative premium ${ttd(s.estPremiumTTD)} · revenue to group ${ttd(s.estRevenueTTD)} · ${s.withinNinetyDays} inside 90 days`));
+  console.log(c.dim(`  indicative premium ${ttd(s.estPremiumTTD)} · revenue to AIB ${ttd(s.estRevenueTTD)} · ${s.withinNinetyDays} inside 90 days`));
+  console.log(c.dim(`  ${relationshipNotice()}`));
   console.log('');
 
   for (const opp of shown) {
     const urgency = opp.urgencyDays <= 90 ? c.amber(`${opp.urgencyDays}d to renewal`) : c.dim(`${opp.urgencyDays}d to renewal`);
     console.log(
       `  ${c.bold(String(opp.rank).padStart(3))}. ${c.bold(opp.clientName)} ${c.dim(`(${opp.clientId})`)}` +
-        `${opp.cardea ? c.blue('  ‹Cardea›') : ''}`,
+        `${opp.tpa ? c.blue(`  ‹${TPA_NAME}›`) : ''}`,
     );
     console.log(`       ${CATALOGUE[opp.line]?.name ?? opp.line} ${c.dim('·')} ${opp.headline}`);
     console.log(

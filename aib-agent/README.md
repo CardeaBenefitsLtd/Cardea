@@ -67,7 +67,8 @@ The fields that do the most work, in rough order:
   declined dental claim is a client telling you what they need.
 - `policies.sumInsuredSetAt` — when the sum insured was last revised, which is how under-insurance
   gets found. If this is not held anywhere, `inceptionDate` is a weak substitute.
-- `policies.administrator` — whether Cardea administers a health plan, or someone else does.
+- `policies.administrator` — who administers a health plan. Match the value to `AIB_TPA_NAME`
+  so the administration rules can tell your TPA apart from a carrier or a self-administered plan.
 
 Personal-lines-only or benefits-only books work fine; rules that have nothing to read return
 nothing.
@@ -96,11 +97,25 @@ a plan with no network access, in-patient episodes that make the critical-illnes
 clients with nothing holding the relationship, and gaps measured against what comparable clients on
 AIB's own book actually carry.
 
-The Cardea lines sit inside this rather than beside it. A group health plan administered by the
-carrier or by the client is a TPA opportunity; a plan with no overseas network attached is a member
-experience gap; a corporate account with local health only and no USD international plan is the
-structure most employers that size end up at. Where Cardea administers the plan, AIB can see the
-claims — and everything else in the benefits column gets easier.
+The health administration lines sit inside this rather than beside it. A group health plan
+administered by the carrier or by the client is an administration opportunity; a plan with no
+overseas network attached is a member experience gap; a corporate account with local health only and
+no USD international plan is the structure most employers that size end up at. Where the TPA
+administers the plan, AIB can see the claims — and everything else in the benefits column gets
+easier.
+
+**These lines depend on a fact the book cannot tell you**: how AIB stands in relation to the
+administrator. Set `AIB_TPA_RELATIONSHIP` before trusting anything the system says about them.
+
+| Setting | Effect |
+|---|---|
+| `none` | Administration lines are removed from the catalogue and the rules that propose them never fire. |
+| `partner` *(default)* | Arm's-length referral or placement. AIB books a 15% share of the fee. The analyst describes it as a working relationship and is told not to imply more. |
+| `subsidiary` | The TPA is part of the AIB group, so the whole fee is AIB's and the claims data is in-house. |
+
+The default is `partner` because it is the assumption that is wrong in the least damaging way — it
+neither invents a corporate relationship nor discards a real one. `AIB_TPA_NAME` renames the
+administrator throughout if it is not Cardea. See [`src/config.js`](src/config.js).
 
 ---
 
@@ -129,7 +144,7 @@ not quotes and must never be presented as such.** Rates live in
 | `npm run sweep` | Portfolio triage: where to spend the next fortnight. |
 | `npm run ask -- "which clients are most exposed to flooding?"` | Plain-language question against the book. |
 | `npm run serve` | Broker console. |
-| `npm test` | 52 tests over the engine, the loader and the tools. |
+| `npm test` | 67 tests over the engine, the loader, the tools and the agent loop. |
 
 Add `--json` to any command for machine-readable output. `--family`, `--kind`, `--limit` and
 `--min-score` filter.
@@ -164,6 +179,8 @@ Copy `.env.example` to `.env`.
 | `AIB_MODEL` | `claude-opus-5` | |
 | `AIB_EFFORT` | `high` | `low` through `max`. Worth sweeping against your own results. |
 | `AIB_FX_TTD_PER_USD` | `6.8` | Normalises the USD international plan. |
+| `AIB_TPA_RELATIONSHIP` | `partner` | `none`, `partner` or `subsidiary`. Governs the administration lines — see above. |
+| `AIB_TPA_NAME` | `Cardea` | Name of the health administrator, and the value expected in `policies.administrator`. |
 | `PORT` | `4000` | |
 
 ---
@@ -177,10 +194,11 @@ on their own accounts renewing in the next 60 days turns this from a tool someon
 into something that arrives. This is a small amount of work and probably the single highest-return
 addition.
 
-**Wire it to Cardea's adjudication feed.** Right now claims are read from a periodic export. A
-declined dental claim is a cross-sell signal that decays — it is worth most in the week it happens,
-when the member is still annoyed about it. Cardea already has that data at the moment of
-adjudication, and AIB owns Cardea. Very few brokers anywhere have that loop available to them.
+**Get claims closer to real time.** Right now claims are read from a periodic export. A declined
+dental claim is a cross-sell signal that decays — it is worth most in the week it happens, when the
+member is still annoyed about it. Whoever adjudicates the claim has that signal at the moment it is
+made. How much of it AIB can get at, and how quickly, depends entirely on the administration
+relationship; where AIB has one, this is the highest-value data connection available to it.
 
 **Read the schedules.** If policy detail lives in PDF schedules rather than structured fields —
 sums insured, extensions, indemnity periods, exclusions — then document extraction to populate the
@@ -199,7 +217,7 @@ wrong.
 single-line, poor loss ratio, long gaps in contact, recent service complaints. Defending revenue is
 usually cheaper than winning it.
 
-**A member-facing assistant for Cardea.** The FAQ page in this repository is a static answer to
+**A member-facing benefits assistant.** The FAQ page in this repository is a static answer to
 questions members ask constantly about pre-certification, exclusions and dependant eligibility.
 Those answers are already written, and the same grounding discipline used here applies directly.
 
@@ -208,6 +226,7 @@ Those answers are already written, and the same grounding discipline used here a
 ## Layout
 
 ```
+src/config.js            facts about AIB the book cannot supply (the TPA relationship)
 src/data/schema.js       the contract — what AIB has to export
 src/data/book.js         loading, indexing, queries, benchmarks
 src/engine/catalogue.js  what AIB places and what it earns

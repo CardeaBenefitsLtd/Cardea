@@ -13,7 +13,7 @@
 
 /** Contribution of each factor to the final score. */
 export const WEIGHTS = {
-  value: 0.34,      // what the placement is worth to the group
+  value: 0.34,      // what the placement is worth to AIB
   confidence: 0.28, // how well the data supports it
   urgency: 0.24,    // how close the natural conversation window is
   effort: 0.14,     // how much work it is to place
@@ -21,7 +21,7 @@ export const WEIGHTS = {
 
 const EFFORT_SCORE = { low: 1.0, medium: 0.6, high: 0.3 };
 
-/** Revenue to the group at or above this scores full marks on value. */
+/** Revenue to AIB at or above this scores full marks on value. */
 const VALUE_CEILING_TTD = 40000;
 
 /**
@@ -105,7 +105,7 @@ export function summarise(ranked) {
     clientsWithOpportunities: Object.keys(byClient).length,
     estPremiumTTD: ranked.reduce((s, o) => s + o.estPremiumTTD, 0),
     estRevenueTTD: ranked.reduce((s, o) => s + o.estRevenueTTD, 0),
-    cardeaOpportunities: ranked.filter((o) => o.cardea).length,
+    tpaOpportunities: ranked.filter((o) => o.tpa).length,
     withinNinetyDays: ranked.filter((o) => o.urgencyDays >= 0 && o.urgencyDays <= 90).length,
     revenueByFamily: Object.fromEntries(Object.entries(byFamily).map(([k, v]) => [k, Math.round(v)])),
     countByKind: byKind,

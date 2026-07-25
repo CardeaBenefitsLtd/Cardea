@@ -19,6 +19,7 @@ import {
 } from '../data/book.js';
 import { CATALOGUE, estimatePremiumTTD, estimateRevenueTTD, livesFor, impliedSumInsured } from './catalogue.js';
 import { toTTD } from '../data/schema.js';
+import { TPA_NAME, TPA_RELATIONSHIP } from '../config.js';
 
 /**
  * @typedef {Object} Evidence
@@ -43,7 +44,7 @@ import { toTTD } from '../data/schema.js';
  * @property {number} confidence     0..1, how sure the rule is on the data alone.
  * @property {number} urgencyDays    Days to the client's next renewal; the natural conversation window.
  * @property {'low'|'medium'|'high'} effort
- * @property {boolean} [cardea]      Delivered by the Cardea subsidiary.
+ * @property {boolean} [tpa]         An administration line delivered by the health TPA.
  */
 
 const CUSTOMER_FACING = new Set(['Retail', 'Hospitality', 'Healthcare', 'Professional Services', 'Financial Services']);
@@ -444,8 +445,7 @@ export const RULES = [
           `AIB handles this client's general insurance but places nothing on the benefits side for ${client.headcount} ` +
           `employees. Either they have no programme — in which case a ${client.industry.toLowerCase()} employer competing ` +
           `for staff has a retention problem worth naming — or they have one placed elsewhere, which is a displacement ` +
-          `opportunity with an incumbent to unseat. Benefits also opens the door to Cardea administration, which is where ` +
-          `the group earns twice on the same account. Establish which of the two it is before building the case.`,
+          `opportunity with an incumbent to unseat. Establish which of the two it is before building the case.`,
         evidence: [
           { kind: 'client', ref: client.id, detail: `${client.headcount} employees; lines held: ${[...lines].join(', ') || 'none'}` },
         ],
@@ -457,14 +457,15 @@ export const RULES = [
   },
 
   {
-    id: 'health_not_administered_by_cardea',
-    title: 'Group health administered outside Cardea',
+    id: 'health_not_administered_by_tpa',
+    title: `Group health administered outside ${TPA_NAME}`,
     kind: 'portfolio',
     run(client, ctx) {
+      if (TPA_RELATIONSHIP === 'none') return [];
       const out = [];
       for (const policy of policiesFor(ctx.ix, client.id)) {
         if (policy.line !== 'group_health_local') continue;
-        if (policy.administrator === 'Cardea') continue;
+        if (policy.administrator === TPA_NAME) continue;
 
         const who = policy.administrator === 'self' ? 'the client administers it in-house' : `${policy.carrier} administers it`;
         out.push(make(client, ctx, {
@@ -472,11 +473,11 @@ export const RULES = [
           line: 'cardea_tpa',
           headline: `Health plan for ${policy.lives ?? livesFor(client)} lives is administered by ${policy.administrator}`,
           rationale:
-            `Policy ${policy.id} is placed with ${policy.carrier} and ${who}. Moving administration to Cardea does three ` +
-            `things: members get direct settlement with providers instead of paying and claiming back, the client gets a ` +
-            `single point of contact for pre-certification, and AIB gets claims visibility on the account. That last one ` +
-            `compounds — every benefits recommendation AIB can make on this client currently rests on guesswork, because ` +
-            `the utilisation data sits with someone else.`,
+            `Policy ${policy.id} is placed with ${policy.carrier} and ${who}. Moving administration to ${TPA_NAME} does ` +
+            `three things: members get direct settlement with providers instead of paying and claiming back, the client ` +
+            `gets a single point of contact for pre-certification, and AIB gets claims visibility on the account. That ` +
+            `last one compounds — every benefits recommendation AIB can make on this client currently rests on ` +
+            `guesswork, because the utilisation data sits with someone else.`,
           evidence: [
             { kind: 'policy', ref: policy.id, detail: `carrier ${policy.carrier}, administrator ${policy.administrator}, ${policy.lives ?? '?'} lives` },
           ],
@@ -491,9 +492,10 @@ export const RULES = [
 
   {
     id: 'no_overseas_network',
-    title: 'Health plan without access to the Cardea overseas network',
+    title: `Health plan without access to the ${TPA_NAME} overseas network`,
     kind: 'gap',
     run(client, ctx) {
+      if (TPA_RELATIONSHIP === 'none') return [];
       const health = policiesFor(ctx.ix, client.id).find((p) => p.line === 'group_health_local');
       if (!health) return [];
       if ((health.extensions ?? []).includes('overseas_network')) return [];
@@ -517,9 +519,9 @@ export const RULES = [
               `${money(overseas.paidTTD)} in the last two years, so the need is demonstrated rather than hypothetical. `
             : `Where members need specialist care that is not available locally, they currently pay the full overseas cost ` +
               `up front and claim it back. `) +
-          `Through the Cardea network, cases are pre-certified and benefits are paid directly to the provider at in-network ` +
-          `pricing, which both lowers the member's share and removes the reimbursement lag. This sells on member experience, ` +
-          `not on premium.`,
+          `Through the ${TPA_NAME} network, cases are pre-certified and benefits are paid directly to the provider at ` +
+          `in-network pricing, which both lowers the member's share and removes the reimbursement lag. This sells on ` +
+          `member experience, not on premium.`,
         evidence: [
           { kind: 'policy', ref: health.id, detail: `extensions: ${(health.extensions ?? []).join(', ') || 'none'}` },
           overseas && { kind: 'claim', ref: `${client.id}:overseas_precert`, detail: `${overseas.count} overseas cases, ${money(overseas.paidTTD)} paid` },
@@ -550,9 +552,9 @@ export const RULES = [
         rationale:
           `A corporate account of ${client.headcount} employees carries local group health only. The standard structure for ` +
           `an employer this size is a USD international plan sitting above the local plan for directors and senior ` +
-          `management, with the local plan meeting the deductible first. It is a retention benefit for exactly the people ` +
-          `the client can least afford to lose, and because Cardea administers it, AIB controls the whole chain rather ` +
-          `than handing the overseas piece to a third party.`,
+          `management, with the local plan meeting the deductible first. It is a retention benefit for exactly the ` +
+          `people the client can least afford to lose, and it keeps the overseas piece inside an arrangement AIB has ` +
+          `visibility of rather than handing it to whoever the carrier happens to use.`,
         evidence: [
           { kind: 'client', ref: client.id, detail: `corporate, ${client.headcount} employees, local health only` },
         ],
@@ -847,7 +849,7 @@ function make(client, ctx, fields) {
     clientId: client.id,
     clientName: client.name,
     family: CATALOGUE[fields.line]?.family ?? 'general',
-    cardea: CATALOGUE[fields.line]?.cardea ?? false,
+    tpa: CATALOGUE[fields.line]?.tpa ?? false,
     urgencyDays: renewal?.days ?? 365,
     nextRenewal: renewal ? { policyId: renewal.policy.id, line: renewal.policy.line, date: renewal.policy.renewalDate } : null,
     ...fields,

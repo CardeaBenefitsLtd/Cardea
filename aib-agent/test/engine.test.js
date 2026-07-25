@@ -310,27 +310,27 @@ describe('rules', () => {
     assert.equal(runRules(book, ['declined_claims_signal_rider']).length, 0);
   });
 
-  test('health administered outside Cardea is surfaced as a TPA opportunity', () => {
+  test('health administered outside the TPA is surfaced as an administration opportunity', () => {
     const book = fixture();
     book.policies.push({
       id: 'POL-H1', clientId: 'CL-T1', line: 'group_health_local', carrier: 'Guardian Life',
       administrator: 'carrier', inceptionDate: '2020-01-01', renewalDate: '2026-09-15',
       annualPremium: 900_000, currency: 'TTD', lives: 360, extensions: [], status: 'active',
     });
-    const opps = runRules(book, ['health_not_administered_by_cardea']);
+    const opps = runRules(book, ['health_not_administered_by_tpa']);
     assert.equal(opps.length, 1);
     assert.equal(opps[0].line, 'cardea_tpa');
-    assert.equal(opps[0].cardea, true);
+    assert.equal(opps[0].tpa, true);
   });
 
-  test('health already administered by Cardea is left alone', () => {
+  test('health already administered by the TPA is left alone', () => {
     const book = fixture();
     book.policies.push({
       id: 'POL-H1', clientId: 'CL-T1', line: 'group_health_local', carrier: 'Guardian Life',
       administrator: 'Cardea', inceptionDate: '2020-01-01', renewalDate: '2026-09-15',
       annualPremium: 900_000, currency: 'TTD', lives: 360, extensions: [], status: 'active',
     });
-    assert.equal(runRules(book, ['health_not_administered_by_cardea']).length, 0);
+    assert.equal(runRules(book, ['health_not_administered_by_tpa']).length, 0);
   });
 
   test('lapsed policies do not count as cover held', () => {
@@ -388,9 +388,11 @@ describe('catalogue', () => {
     assert.ok(estimatePremiumTTD('cyber_liability', tiny) >= CATALOGUE.cyber_liability.minPremiumTTD);
   });
 
-  test('revenue is the declared share of premium', () => {
+  test('revenue is the declared share of premium', async () => {
+    const { TPA_REVENUE_SHARE } = await import('../src/config.js');
     assert.equal(estimateRevenueTTD('property_all_risk', 100_000), 17_500);
-    assert.equal(estimateRevenueTTD('cardea_tpa', 100_000), 100_000);
+    // Administration revenue follows the configured relationship, not a constant.
+    assert.equal(estimateRevenueTTD('cardea_tpa', 100_000), Math.round(100_000 * TPA_REVENUE_SHARE));
   });
 });
 
@@ -440,6 +442,29 @@ describe('scoring', () => {
     assert.equal(s.estPremiumTTD, 3000);
     assert.equal(s.clientsWithOpportunities, 2);
     assert.equal(s.withinNinetyDays, 2);
+  });
+});
+
+// ------------------------------------------------------- TPA relationship
+
+describe('TPA relationship configuration', () => {
+  test('the default treats the administrator as an arm\'s-length partner', async () => {
+    const { TPA_RELATIONSHIP, TPA_REVENUE_SHARE, TPA_ENABLED } = await import('../src/config.js');
+    assert.equal(TPA_RELATIONSHIP, 'partner');
+    assert.equal(TPA_ENABLED, true);
+    assert.ok(TPA_REVENUE_SHARE < 1, 'an arm\'s-length partner must not book the whole fee');
+  });
+
+  test('administration lines carry the tpa flag and a revenue share below the full fee', () => {
+    const tpaLines = Object.values(CATALOGUE).filter((p) => p.tpa);
+    assert.ok(tpaLines.length > 0);
+    for (const line of tpaLines) assert.ok(line.revenueRate <= 1);
+  });
+
+  test('the system prompt never claims ownership it has not been told about', async () => {
+    const { SYSTEM_PROMPT } = await import('../src/agent/prompt.js');
+    assert.doesNotMatch(SYSTEM_PROMPT, /wholly-owned|subsidiary of AIB/i);
+    assert.match(SYSTEM_PROMPT, /Do not assert anything about AIB's corporate structure/);
   });
 });
 
@@ -499,10 +524,10 @@ describe('agent tools', () => {
     assert.deepEqual(overlap, []);
   });
 
-  test('list_opportunities honours the cardeaOnly filter', () => {
-    const payload = JSON.parse(runTool('list_opportunities', { cardeaOnly: true, limit: 50 }, ctx).content);
+  test('list_opportunities honours the tpaOnly filter', () => {
+    const payload = JSON.parse(runTool('list_opportunities', { tpaOnly: true, limit: 50 }, ctx).content);
     assert.ok(payload.opportunities.length > 0);
-    assert.ok(payload.opportunities.every((o) => o.cardea));
+    assert.ok(payload.opportunities.every((o) => o.tpa));
   });
 
   test('a cohort too small to benchmark says so rather than inventing peers', () => {

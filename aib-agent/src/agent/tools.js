@@ -20,6 +20,7 @@ import { findOpportunities } from '../engine/rules.js';
 import { rankOpportunities, summarise } from '../engine/score.js';
 import { CATALOGUE } from '../engine/catalogue.js';
 import { INDUSTRIES } from '../data/schema.js';
+import { TPA_NAME } from '../config.js';
 
 /** @typedef {{ix: import('../data/book.js').BookIndex, benchmarks: Map<string,any>, now: Date}} ToolContext */
 
@@ -80,7 +81,7 @@ export const TOOL_DEFINITIONS = [
         kind: { type: 'string', enum: ['gap', 'adequacy', 'lifecycle', 'signal', 'portfolio'] },
         minScore: { type: 'number', description: '0..1. Filters low-ranked items.' },
         renewalWithinDays: { type: 'number' },
-        cardeaOnly: { type: 'boolean', description: 'Only opportunities delivered by the Cardea subsidiary.' },
+        tpaOnly: { type: 'boolean', description: `Only administration lines delivered by ${TPA_NAME}.` },
         limit: { type: 'number', description: 'Default 25.' },
       },
     },
@@ -213,7 +214,7 @@ const HANDLERS = {
     let ranked = rankOpportunities(opportunities);
     if (input.family) ranked = ranked.filter((o) => o.family === input.family);
     if (input.kind) ranked = ranked.filter((o) => o.kind === input.kind);
-    if (input.cardeaOnly) ranked = ranked.filter((o) => o.cardea);
+    if (input.tpaOnly) ranked = ranked.filter((o) => o.tpa);
     if (input.minScore != null) ranked = ranked.filter((o) => o.score >= input.minScore);
     if (input.renewalWithinDays != null) {
       ranked = ranked.filter((o) => o.urgencyDays >= 0 && o.urgencyDays <= input.renewalWithinDays);
@@ -270,7 +271,7 @@ const HANDLERS = {
         description: p.description,
         basis: p.basis,
         requires: p.requires ?? [],
-        deliveredByCardea: !!p.cardea,
+        deliveredByTpa: !!p.tpa,
       })),
     };
   },

@@ -15,6 +15,8 @@
  *   flat         - everything with a conventional minimum
  */
 
+import { TPA_NAME, TPA_ENABLED, TPA_REVENUE_SHARE, TPA_RELATIONSHIP } from '../config.js';
+
 /** @typedef {'per_life'|'per_vehicle'|'rate_on_sum'|'pct_revenue'|'flat'} Basis */
 
 /**
@@ -26,11 +28,13 @@
  * @property {Basis} basis
  * @property {number} rate               Interpreted per `basis`.
  * @property {number} [minPremiumTTD]
- * @property {number} revenueRate      Share of premium that accrues to the group. Brokerage on
- *                                     placed lines; 1.0 on Cardea services, where the whole fee
- *                                     is group revenue rather than commission on someone else's premium.
+ * @property {number} revenueRate      Share of premium that accrues to AIB. Brokerage on placed
+ *                                     lines; on administration lines it depends on the TPA
+ *                                     relationship — see src/config.js.
  * @property {string[]} [requires]       Lines that must already exist for this to make sense.
- * @property {boolean} [cardea]          Delivered by the Cardea subsidiary.
+ * @property {boolean} [tpa]             An administration line delivered by the health TPA.
+ *                                       Removed from the catalogue when AIB has no relationship
+ *                                       with it (AIB_TPA_RELATIONSHIP=none).
  */
 
 /** @type {Record<string, Product>} */
@@ -209,12 +213,13 @@ export const CATALOGUE = {
     name: 'US Dollar International Health Plan',
     family: 'benefits',
     description:
-      'USD-denominated international plan for senior staff, sitting above the local plan and paying overseas providers directly through the Cardea network. Sold on access to overseas specialist care, not on price.',
+      'USD-denominated international plan for senior staff, sitting above the local plan and settling with overseas ' +
+      'providers directly' + (TPA_ENABLED ? ` through the ${TPA_NAME} network` : '') + '. Sold on access to overseas ' +
+      'specialist care, not on price.',
     basis: 'per_life',
     rate: 8900,
     minPremiumTTD: 60000,
     revenueRate: 0.1,
-    cardea: true,
   },
   group_life: {
     key: 'group_life',
@@ -315,34 +320,57 @@ export const CATALOGUE = {
     revenueRate: 0.25,
   },
 
-  // ------------------------------------------------- Cardea subsidiary services
+  // ------------------------------------------ health administration services
+  //
+  // These describe the TPA arrangement, not a corporate structure. What AIB
+  // earns and how the analyst is allowed to characterise the relationship both
+  // come from src/config.js, because neither is knowable from the book.
   cardea_tpa: {
     key: 'cardea_tpa',
-    name: 'Cardea Third-Party Administration',
+    name: `${TPA_NAME} Third-Party Administration`,
     family: 'service',
     description:
-      'Cardea adjudicates medical claims and pays providers or members directly. Moving administration in-house to Cardea gives AIB claims visibility it does not get when the carrier or the client self-administers, and that visibility is what makes every other benefits recommendation possible.',
+      `${TPA_NAME} adjudicates medical claims and pays providers or members directly. Moving administration to ` +
+      `${TPA_NAME} gives AIB claims visibility it does not get when the carrier or the client self-administers, and ` +
+      `that visibility is what makes every other benefits recommendation on the account possible.`,
     basis: 'per_life',
     rate: 540,
     minPremiumTTD: 25000,
-    revenueRate: 1.0,
+    revenueRate: TPA_REVENUE_SHARE,
     requires: ['group_health_local'],
-    cardea: true,
+    tpa: true,
   },
   cardea_overseas_network: {
     key: 'cardea_overseas_network',
-    name: 'Cardea Overseas Provider Network',
+    name: `${TPA_NAME} Overseas Provider Network`,
     family: 'service',
     description:
-      'Access to Cardea\'s overseas provider network with pre-certification and direct settlement at in-network pricing, so members avoid paying up front and claiming back. Sold on member experience and out-of-pocket reduction.',
+      `Access to ${TPA_NAME}'s overseas provider network with pre-certification and direct settlement at in-network ` +
+      `pricing, so members avoid paying up front and claiming back. Sold on member experience and out-of-pocket ` +
+      `reduction.`,
     basis: 'per_life',
     rate: 310,
     minPremiumTTD: 15000,
-    revenueRate: 1.0,
+    revenueRate: TPA_REVENUE_SHARE,
     requires: ['group_health_local'],
-    cardea: true,
+    tpa: true,
   },
 };
+
+// With no TPA relationship the administration lines are not something AIB can
+// place, so they are removed outright rather than left in and filtered later.
+// Deleting them here also switches off every rule that proposes them, because
+// the rules only ever name a line that exists in this catalogue.
+if (!TPA_ENABLED) {
+  for (const [key, entry] of Object.entries(CATALOGUE)) {
+    if (entry.tpa) delete CATALOGUE[key];
+  }
+}
+
+/** True when the line is delivered by the health TPA rather than placed with a carrier. */
+export function isTpaLine(key) {
+  return Boolean(CATALOGUE[key]?.tpa);
+}
 
 /** @param {string} key */
 export function product(key) {
